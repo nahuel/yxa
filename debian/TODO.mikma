@@ -1,0 +1,30 @@
+dpkg - varning: när yxa togs bort var inte katalogen "/var/lib/yxa/db/incomingproxy" tom, så den togs inte bort.
+dpkg - varning: när yxa togs bort var inte katalogen "/var/lib/yxa/db" tom, så den togs inte bort.
+dpkg - varning: när yxa togs bort var inte katalogen "/var/lib/yxa" tom, så den togs inte bort.
+
+Add config file templates?
+Protect yaws
+
+        #chown root:root /etc/yxa
+        #chmod 755 /etc/yaws
+	#chown -R yxa:yxa /etc/yxa
+	#chmod -R 700 /etc/yxa
+
+        # .conf may contain sensitive information (passwords)
+        #chown root:yxa /etc/yxa/yxa.conf
+        #chmod 640 /etc/yxa/yxa.conf
+        #chown root:yxa /etc/yxa/*.pem
+        #chmod 640 /etc/yxa/*.pem
+
+
+xref:start(s).
+xref:add_release(s, code:lib_dir(), {name, otp}).
+xref:add_directory(s, "/home/mikael/svn/alioth/pkg-voip/build-area/yxa-1.0~rc1/debian/yxa", [{recurse,true}]).
+Apps=lists:nth(2, erlang:tuple_to_list(xref:q(s, "(App)range ME"))).
+xref:stop(s).
+
+Search=lists:map(fun(E) -> os:cmd("dpkg --search " ++ filename:join(code:lib_dir(E), "ebin")) end, Apps).
+Pkgs=lists:usort(lists:map(fun(E) -> lists:nth(1, string:tokens(E, ":")) end, Search)).
+Version = lists:map(fun(E) -> Version=os:cmd("dpkg-query --show --showformat='${Version}' " ++ E), Version end, Pkgs).
+Ver2 = string:substr(Version, string:chr(Version, $:)+1).
+Upstream = string:substr(Ver2, 1, string:rchr(Ver2, $-)-1).

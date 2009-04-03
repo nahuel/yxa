@@ -1,0 +1,7 @@
+debian/examples/incomingproxy.config
+debian/examples/outgoingproxy.config
+debian/examples/pstnproxy.config
+debian/examples/appserver.config
+debian/examples/yxa.config
+debian/examples/secrets.config
+debian/examples/sipuserdb.config

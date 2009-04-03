@@ -1,0 +1,11 @@
+# Defaults for yxa initscript
+# sourced by /etc/init.d/yxa
+# installed at /etc/default/yxa by the maintainer scripts
+
+#
+# This is a POSIX shell fragment
+#
+
+# Additional options that are passed to the Daemon.
+DAEMON_OPTS=""
+#SERVICES="incomingproxy outgoingproxy pstnproxy appserver eventserver yxa_yaws"

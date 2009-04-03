@@ -1,0 +1,176 @@
+#! /bin/sh
+#
+# skeleton	example file to build /etc/init.d/ scripts.
+#		This file should be used to construct scripts for /etc/init.d.
+#
+#		Written by Miquel van Smoorenburg <miquels@cistron.nl>.
+#		Modified for Debian 
+#		by Ian Murdock <imurdock@gnu.ai.mit.edu>.
+#		Modified for yxa
+#		by Mikael Magnusson <mikma@users.sourceforge.net>
+# Version:	@(#)skeleton  1.9  26-Feb-2001  miquels@cistron.nl
+#
+
+### BEGIN INIT INFO
+# Provides:          yxa
+# Required-Start:    $remote_fs $network $named $syslog $time
+# Required-Stop:     $remote_fs $network $named $syslog $time
+# Should-Start:      
+# Should-Stop:       
+# Default-Start:     2 3 4 5
+# Default-Stop:      0 1 6
+# Short-Description: SIP server
+# Description:       SIP server applications written in Erlang
+### END INIT INFO
+
+PATH=/usr/local/sbin:/usr/local/bin:/sbin:/bin:/usr/sbin:/usr/bin
+NAME=yxa
+DESC="YXA servers"
+SERVICES=""
+USER=yxa
+HOSTNAME="-hostname `hostname -f`"
+
+set -e
+
+function usage {
+	N=/etc/init.d/$NAME
+	echo "Usage: $N {start|stop|restart|reload|force-reload|info} {incomingproxy|outgoingproxy|pstnproxy|appserver|eventserver|yxa_yaws}" >&2
+}
+
+function check_service {
+    local service=$1
+case "$service" in
+  incomingproxy|outgoingproxy|pstnproxy|appserver|eventserver|yxa_yaws)
+	;;
+  *)
+	echo "Invalid service name: $service"
+	usage
+	# Invalid argument
+	exit 2
+	;;
+esac
+
+DAEMON=/usr/lib/yxa/bin/$service
+test -x $DAEMON -a -f $DAEMON || return
+#test -r /etc/yxa/$service.config || return
+}
+
+function do_action {
+local action=$1
+local service=$2
+local config="/etc/yxa/${service}.config"
+local daemon_opts="$DAEMON_OPTS $HOSTNAME"
+
+DAEMON=/usr/lib/yxa/bin/$service
+
+if test -r $config; then
+	daemon_opts="$daemon_opts -config $config"
+fi
+
+if test x$service = xincomingproxy; then
+	daemon_opts="$daemon_opts -mnesiadir /var/lib/yxa/db/incomingproxy"
+fi
+
+daemon()
+{
+	su $USER -c "cd /var/lib/yxa && $DAEMON $daemon_opts $@" >/dev/null
+}
+
+case "$action" in
+  start)
+	echo -n " $service"
+	if daemon status; then
+	    echo -n " (already running)"
+	else
+	    daemon start
+	fi
+	;;
+  stop)	
+	echo -n " $service"
+	if daemon status; then
+	    daemon stop
+	else
+	    echo -n " (not running)"
+	fi
+# -mnesiadir /var/lib/yxa/db/incomingproxy stop
+	;;
+  reload|force-reload)
+	daemon reload
+	echo -n " $service"
+	;;
+  restart)
+	daemon restart
+	echo -n " $service"
+	;;
+  info)
+	daemon info
+	echo -n " $service"
+	;;
+  *)
+	usage
+	# Unimplemented feature
+	exit 3
+	;;
+esac
+}
+
+# Include yxa defaults if available
+if [ -f /etc/default/yxa ] ; then
+	. /etc/default/yxa
+fi
+
+if test $# -lt 1; then
+	usage
+	# Invalid argument(s)
+	exit 2
+fi
+
+ACTION=$1
+shift
+
+if test $# -gt 0; then
+	SERVICES=$@
+fi
+
+SERVICES_REV=
+if test $ACTION = stop; then
+	for service in $SERVICES; do
+		SERVICES_REV="$service $SERVICES_REV"
+	done
+	SERVICES="$SERVICES_REV"
+fi
+
+for service in $SERVICES; do
+	check_service $service
+done
+
+case "$ACTION" in
+  start)
+	echo -n "Starting $DESC:"
+	;;
+  stop)
+	echo -n "Stopping $DESC:"
+	;;
+  reload|force-reload)
+	echo -n "Reloading $DESC configuration files."
+	;;
+  restart)
+	echo -n "Restarting $DESC:"
+	;;
+  info)
+	echo -n "Info $DESC:"
+	;;
+  *)
+	usage
+	# Unimplemented feature
+	exit 3
+	;;
+esac
+
+for service in $SERVICES; do
+	do_action $ACTION $service
+done
+
+echo "."
+
+exit 0

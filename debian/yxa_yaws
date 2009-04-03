@@ -1,0 +1,238 @@
+#!/bin/sh
+#
+# yxa_yaws
+#
+
+PROGRAMNAME="yxa_yaws"
+CONFIGDIR="/etc/yxa"
+SSLCERTDIR="/etc/yxa"
+beamdir="/usr/lib/yxa/ebin"
+erl="/usr/bin/erl"
+
+docroot="/usr/share/yxa/www"
+tmpdir="/var/run/yxa"
+includedir="/usr/lib/yxa/include"
+logdir="/var/log/yxa"
+
+usage()
+{
+    common_options="\
+	-config File	use 'File.config' as config file
+	-c_ssl File	use 'File' as Erlang distribution client certificate file
+	-s_ssl File	use 'File' as Erlang distribution server certificate file
+	-name Name	use 'Name' as Erlang node name
+	-hostname Name	use 'Name' as hostname part of node-name
+	-h		show usage
+"
+
+	    echo "Syntax: $0 [options] command"
+	    echo ""
+	    echo "  Options :"
+	    echo "	-d		debug-mode, don't detach - implies 'start' command"
+	    echo "$common_options"
+	    echo ""
+	    echo "  Commands :"
+	    echo "	start		start server"
+	    echo "	stop		stop running server"
+	    echo "	status		get brief status of running server"
+	    # these are not implemented yet
+	    echo "	info [all]	get info about running server, add 'all' to get more info"
+	    echo "	reload		reload configuration of running server, if possible"
+	    echo "	restart		restart running server"
+	    echo ""
+
+    exit 1
+}
+
+# Calculate Erlang arguments
+configpath="${CONFIGDIR}/${PROGRAMNAME}.config"
+
+if [ "x$SSLCERTDIR" = "x" ]; then
+    client_sslcertfile="$CONFIGDIR/yxa/cert.comb"
+    server_sslcertfile="$client_sslcertfile"
+else
+    client_sslcertfile="$SSLCERTDIR/cert.comb"
+    server_sslcertfile="$client_sslcertfile"
+fi
+
+command=""
+command_arguments=""
+detach="-detached"
+replica=""
+explicit_name=0
+hostname=$(hostname)
+
+name="$PROGRAMNAME"
+
+exit_now=0
+# parse command line options
+while [ $# -gt 0 -a $exit_now -eq 0 ]
+do
+      arg=$1
+      # complicated shift to not make picky sh's whine
+      if [ "x$1" != "x" ]; then shift; else exit_now=1; fi
+
+      case $arg in
+	  -h)
+	      usage
+	      ;;
+	  -config)
+	      if [ "x$1" = "x" ]; then
+		  echo "$0: '$arg' requires an argument"
+		  exit 1
+	      else
+		  configpath="$1"
+		  shift
+	      fi
+	      ;;
+	  -c_ssl)
+	      if [ "x$1" = "x" ]; then
+		  echo "$0: '$arg' requires an argument"
+		  exit 1
+	      else
+		  client_sslcertfile="$1"
+		  shift
+	      fi
+	      ;;
+	  -s_ssl)
+	      if [ "x$1" = "x" ]; then
+		  echo "$0: '$arg' requires an argument"
+		  exit 1
+	      else
+		  server_sslcertfile="$1"
+		  shift
+	      fi
+	      ;;
+	  -d)
+	      detach=""
+	      command="start"
+	      ;;
+	  -name)
+	      if [ "x$1" = "x" ]; then
+		  echo "$0: '$arg' requires an argument"
+		  exit 1
+	      else
+		  name="$1"
+		  explicit_name=1
+		  shift
+	      fi
+	      ;;
+	  -hostname)
+	      if [ "x$1" = "x" ]; then
+		  echo "$0: '$arg' requires an argument"
+		  exit 1
+	      else
+		  hostname="$1"
+		  shift
+	      fi
+	      ;;
+	  start|stop|status|info|reload|restart)
+	      if [ "$arg" = "info" ]; then
+		  # the 'info' command can take an optional argument
+		  if [ "x$1" = "xall" ]; then
+		      command_arguments="$1"
+		      # complicated shift to not make picky sh's whine
+		      if [ "x$1" != "x" ]; then shift; else exit_now=1; fi
+		  fi
+	      fi
+
+	      # check that this was the last arg
+	      if [ $# -ne 0 ]; then
+		  echo "$0: command ('$arg') should come after any options"
+		  exit 1
+	      fi
+	      if [ "x$command" != "x" -a "$command" != "$1" ]; then
+		  echo "$0: command already set ('$command' != supplied '$1')"
+		  exit 1
+	      fi
+
+	      command="$arg"
+	      # complicated shift to not make picky sh's whine
+	      if [ "x$1" != "x" ]; then shift; else exit_now=1; fi
+	      ;;
+	  *)
+	      usage
+      esac
+done
+
+if [ "x$command" = "x" ]; then
+    usage
+fi
+
+if [ "x`echo $hostname | grep '\.'`" = "x" ]; then
+    echo "WARNING: Your hostname ($hostname) is not fully qualified" 1>&2
+fi
+
+if [ -f ${client_sslcertfile} ] ; then
+    ssloptions="-proto_dist inet_ssl \
+	-ssl_dist_opt client_certfile $client_sslcertfile \
+	-ssl_dist_opt server_certfile $server_sslcertfile -ssl_dist_opt verify 2"
+    boot_start_ssl="-boot start_ssl"
+else
+    echo "WARNING: starting without SSL - " \
+	"missing certificate file ${sslcertfile}"
+    ssloptions=""
+    boot_start_ssl=""
+fi
+
+if [ -d "${PWD}/src/event_handler" -a -d "${PWD}/src/cpl" ]; then
+    # we must be running from the build directory, add all subdirectorys
+    # to src/ plus yaws/src/ to the code search path
+    beamdirs=$(
+	echo "-pa src/ -pa yaws/src/"
+	ls ${PWD}/src/ | while read entry; do
+	    if [ -d "src/$entry" ]; then
+		echo "-pa src/$entry"
+	    fi
+	done
+    )
+    
+    EXTRA_ERL_ARGUMENTS="${EXTRA_ERL_ARGUMENTS} `echo $beamdirs`"
+fi
+
+    if [ ! -r "${configpath}" ]; then
+	echo "$0: Configuration file '${configpath}' not found or not readable"
+	exit 1
+    fi
+
+    case $command in
+	start)
+	    if [ -f "$PWD/src/${PROGRAMNAME}.boot" ]; then
+		bootfile="$PWD/src/${PROGRAMNAME}"
+	    else
+		if [ -f "${beamdir}/${PROGRAMNAME}.boot" ]; then
+		    bootfile="${beamdir}/$PROGRAMNAME"
+		fi
+	    fi
+	    ${erl} -boot $bootfile -pz ${beamdir} \
+		$EXTRA_ERL_ARGUMENTS \
+		-name $name \
+		-s yxa_yaws_app \
+		-yaws embedded true \
+		-yxa_yaws docroot \"$docroot\" \
+		-yxa_yaws tmpdir \"$tmpdir\" \
+		-yxa_yaws includedir \"$includedir\" \
+		-yxa_yaws logdir \"$logdir\" \
+		$ssloptions \
+		$detach
+	    ;;
+	stop|status|info|reload|restart)
+	    node="${name}@${hostname}"
+	    if [ $explicit_name -eq 0 ]; then
+	        # include pid ($$) in node name used here since contact with the running
+	        # node could otherwise fail for consecutive commands executed rapidly
+		name="${name}_ctl_$$"
+	    fi
+
+	    ${erl} $boot_start_ssl -pz ${beamdir} \
+		$EXTRA_ERL_ARGUMENTS \
+		-name "$name" \
+		$ssloptions \
+		-noshell \
+		-s yxa_yaws_ctl -extra $node $command $command_arguments
+	    ;;
+	*)
+	    echo "$0: command '$command' not implemented yet"
+	    exit 1
+	    ;;
+    esac

@@ -1,0 +1,7 @@
+The next patch would create the file src/include/kernel/src/inet_dns.hrl,
+which already exists!  Applying it anyway.
+patching file src/include/kernel/src/inet_dns.hrl
+Patch attempted to create file src/include/kernel/src/inet_dns.hrl, which already exists.
+Hunk #1 FAILED at 1.
+1 out of 1 hunk FAILED -- saving rejects to file src/include/kernel/src/inet_dns.hrl.rej
+md5sum: 92cf5b4cc072bdb089e28d9fa161b366  /home/mikael/src/yxa/debian/patches/inet_dns.dpatch

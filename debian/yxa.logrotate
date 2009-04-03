@@ -1,0 +1,17 @@
+/var/log/yxa/*.log /var/log/yxa/*.debug /var/log/yxa/*.error /var/log/yxa/*.access {
+        weekly
+        missingok
+        rotate 52
+        compress
+        delaycompress
+        notifempty
+        create 640 yxa adm
+        sharedscripts
+        postrotate
+             if [ -x /usr/sbin/invoke-rc.d ]; then \
+                invoke-rc.d yxa restart > /dev/null; \
+             else \
+                /etc/init.d/yxa restart > /dev/null; \
+             fi; \
+        endscript
+}

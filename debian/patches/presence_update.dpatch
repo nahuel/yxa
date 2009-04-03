@@ -1,0 +1,26 @@
+#! /bin/sh /usr/share/dpatch/dpatch-run
+## presence_update.dpatch by  <mikma@users.sourceforge.net>
+##
+## All lines beginning with `## DP:' are a description of the patch.
+## DP: Fix presence update.
+
+@DPATCH@
+diff -urNad yxa-1.0~/src/event/presence_package.erl yxa-1.0/src/event/presence_package.erl
+--- yxa-1.0~/src/event/presence_package.erl	2007-10-17 16:41:21.000000000 +0200
++++ yxa-1.0/src/event/presence_package.erl	2008-03-29 21:01:22.000000000 +0100
+@@ -514,11 +514,11 @@
+ 		    true ->
+ 			case Request#request.body of
+ 			    <<>> ->
+-				%% Has body, is not a refresh but rather an update
+-				{update, ETag1};
+-			    _ ->
+ 				%%% "a PUBLISH request that refreshes event state MUST NOT have a body."
+-				{refresh, ETag1}
++				{refresh, ETag1};
++			    _ ->
++				%% Has body, is not a refresh but rather an update
++				{update, ETag1}
+ 			end;
+ 		    false ->
+ 			transactionlayer:send_response_handler(THandler, 412, "Conditional Request Failed"),

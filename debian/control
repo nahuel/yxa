@@ -1,0 +1,62 @@
+Source: yxa
+Section: net
+Priority: optional
+Maintainer: Debian VoIP Team <pkg-voip-maintainers@lists.alioth.debian.org>
+Uploaders: Kilian Krause <kilian@debian.org>, Jose Carlos Garcia Sogo <jsogo@debian.org>, Mark Purcell <msp@debian.org>, Mikael Magnusson <mikma@users.sourceforge.net>
+Build-Depends: debhelper (>= 5), dpatch, autotools-dev, erlang-base
+ | erlang-base-hipe, erlang-dev, erlang-nox, yaws
+Standards-Version: 3.7.3
+Homepage: http://www.stacken.kth.se/project/yxa/
+Vcs-Svn: svn://svn.debian.org/pkg-voip/yxa/trunk/
+Vcs-Browser: http://svn.debian.org/wsvn/pkg-voip/yxa/?op=log
+
+Package: yxa
+Architecture: any
+Depends: ${shlibs:Depends}, ${misc:Depends}, erlang-base (>= 1:11.b.5)
+ | erlang-base-hipe (>= 1:11.b.5), erlang-nox (>= 1:11.b.5), yaws (>= 1.73)
+Pre-Depends: adduser
+Description: SIP software written in Erlang
+ Yxa is SIP software written in Erlang  (Erlang is a programming language
+ written by Ericsson).
+ .
+ Yxa is both a transaction stateful SIP stack, and a set of SIP server
+ applications.
+ .
+ Main features
+ .
+    * RFC3261 compliant SIP-server, capable of everything a generic
+      domain needs :
+          o Registrar that keeps track of your users
+          o Handles incoming SIP requests to your domain
+          o Handles routing of requests from your users to remote domains
+          o TCP, UDP and TLS (including SIPS) support
+          o Automatically maps e-mail addresses of your users to their
+            SIP addresses, if you have the e-mail addresses in LDAP
+          o Handles multiple domains using a single server instance 
+    * ENUM support for PSTN-bypass whenever possible
+    * IPv6 support
+    * Forking, both parallel and sequential
+    * CPL (RFC3880) support for advanced user-control of events (currently
+      incoming calls only)
+    * Modular user database, currently with LDAP, Mnesia, MySQL and
+      text-file backends
+    * PSTN destination access control (per user or for anonymous users)
+ .
+ Included applications:
+ .
+  * incomingproxy:
+    Handles registrations and proxies requests. Implements partial ENUM
+    and LDAP searches. Handles most everything you need to set up SIP for your
+    domain.
+ .
+  * outgoingproxy:
+    Special proxy for clients behind NAT. 
+ .
+  * pstnproxy:
+    Designed as an authentication frontend to an insecure PSTN gateway.
+ .
+  * appserver:
+    Provides basic forking and CPL script interpretation.
+ .
+  * yxa_yaws:
+    Embedded web server interface.

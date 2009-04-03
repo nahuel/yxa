@@ -1,0 +1,154 @@
+#! /bin/sh /usr/share/dpatch/dpatch-run
+## init_start.dpatch by  <mikma@users.sourceforge.net>
+##
+## All lines beginning with `## DP:' are a description of the patch.
+## DP: Start applications using -s switch to erl instead of using custom
+## DP: boot file.
+
+@DPATCH@
+diff -urNad yxa-1.0~/scripts/init.sh.in yxa-1.0/scripts/init.sh.in
+--- yxa-1.0~/scripts/init.sh.in	2006-08-04 10:52:49.000000000 +0200
++++ yxa-1.0/scripts/init.sh.in	2008-03-28 23:02:33.000000000 +0100
+@@ -329,7 +329,7 @@
+ 		    fi
+ 		fi
+ 	    fi
+-	    ${erl} -boot "$bootfile" -pz ${beamdir} \
++	    ${erl} $boot_start_ssl -s ${PROGRAMNAME} -pz ${beamdir} \
+ 		$EXTRA_ERL_ARGUMENTS \
+ 		-name $name \
+ 		-yxa_config $configpath \
+diff -urNad yxa-1.0~/src/appserver.erl yxa-1.0/src/appserver.erl
+--- yxa-1.0~/src/appserver.erl	2007-10-17 16:41:21.000000000 +0200
++++ yxa-1.0/src/appserver.erl	2008-03-28 22:59:09.000000000 +0100
+@@ -23,6 +23,11 @@
+ 
+ -export([test/0]).
+ 
++-export([
++	 start/0,
++	 stop/0
++	]).
++
+ %%--------------------------------------------------------------------
+ %%% Application specific exports, exported for CPL subsystem
+ %%--------------------------------------------------------------------
+@@ -47,6 +52,11 @@
+ -define(APPSERVER_GLUE_TIMEOUT, 1200 * 1000).
+ -define(SIPPIPE_TIMEOUT, 900).
+ 
++start() ->
++    application:start(?MODULE).
++
++stop() ->
++    application:stop(?MODULE).
+ 
+ %%====================================================================
+ %% Behaviour functions
+diff -urNad yxa-1.0~/src/event/eventserver.erl yxa-1.0/src/event/eventserver.erl
+--- yxa-1.0~/src/event/eventserver.erl	2007-10-17 16:41:21.000000000 +0200
++++ yxa-1.0/src/event/eventserver.erl	2008-03-28 23:00:05.000000000 +0100
+@@ -22,6 +22,11 @@
+ 
+ -export([test/0]).
+ 
++-export([
++	 start/0,
++	 stop/0
++	]).
++
+ %%--------------------------------------------------------------------
+ %%% Application specific exports
+ %%--------------------------------------------------------------------
+@@ -41,6 +46,11 @@
+ -define(EVENTSERVER_T, eventserver_t).
+ -define(SHUTDOWN_TIMEOUT, 10).
+ 
++start() ->
++    application:start(?MODULE).
++
++stop() ->
++    application:stop(?MODULE).
+ 
+ %%====================================================================
+ %% Behaviour functions
+diff -urNad yxa-1.0~/src/incomingproxy.erl yxa-1.0/src/incomingproxy.erl
+--- yxa-1.0~/src/incomingproxy.erl	2008-03-28 22:55:56.000000000 +0100
++++ yxa-1.0/src/incomingproxy.erl	2008-03-28 22:58:54.000000000 +0100
+@@ -24,12 +24,22 @@
+ 
+ -export([test/0]).
+ 
++-export([
++	 start/0,
++	 stop/0
++	]).
++
+ %%--------------------------------------------------------------------
+ %% Include files
+ %%--------------------------------------------------------------------
+ -include("siprecords.hrl").
+ -include("sipsocket.hrl").
+ 
++start() ->
++    application:start(?MODULE).
++
++stop() ->
++    application:stop(?MODULE).
+ 
+ %%====================================================================
+ %% Behaviour functions
+diff -urNad yxa-1.0~/src/outgoingproxy.erl yxa-1.0/src/outgoingproxy.erl
+--- yxa-1.0~/src/outgoingproxy.erl	2007-10-17 16:41:21.000000000 +0200
++++ yxa-1.0/src/outgoingproxy.erl	2008-03-28 22:59:02.000000000 +0100
+@@ -26,12 +26,23 @@
+ 
+ -export([test/0]).
+ 
++-export([
++	 start/0,
++	 stop/0
++	]).
++
+ %%--------------------------------------------------------------------
+ %% Include files
+ %%--------------------------------------------------------------------
+ -include("siprecords.hrl").
+ -include("sipsocket.hrl").
+ 
++start() ->
++    application:start(?MODULE).
++
++stop() ->
++    application:stop(?MODULE).
++
+ %%====================================================================
+ %% Behaviour functions
+ %% Standard YXA SIP-application callback functions
+diff -urNad yxa-1.0~/src/pstnproxy.erl yxa-1.0/src/pstnproxy.erl
+--- yxa-1.0~/src/pstnproxy.erl	2007-10-17 16:41:21.000000000 +0200
++++ yxa-1.0/src/pstnproxy.erl	2008-03-28 22:59:31.000000000 +0100
+@@ -27,6 +27,11 @@
+ 
+ -export([test/0]).
+ 
++-export([
++	 start/0,
++	 stop/0
++	]).
++
+ %%--------------------------------------------------------------------
+ %% Include files
+ %%--------------------------------------------------------------------
+@@ -34,6 +39,11 @@
+ -include("sipsocket.hrl").
+ -include("pstnproxy.hrl").
+ 
++start() ->
++    application:start(?MODULE).
++
++stop() ->
++    application:stop(?MODULE).
+ 
+ %%====================================================================
+ %% Behaviour functions

@@ -1,0 +1,7 @@
+yxa for Debian
+--------------
+
+The YXA sip servers need to be manually configured, and enabled. 
+See /usr/share/doc/yxa/README.gz for information on how to configure.
+
+ -- Mikael Magnusson <mikma@users.sourceforge.net>, Fri,  4 Aug 2006 12:04:12 +0200

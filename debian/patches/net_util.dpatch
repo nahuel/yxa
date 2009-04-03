@@ -1,0 +1,134 @@
+#! /bin/sh /usr/share/dpatch/dpatch-run
+## net_util.dpatch by  <mikma@users.sourceforge.net>
+##
+## All lines beginning with `## DP:' are a description of the patch.
+## DP: Wait 5s for database nodes (incomingproxy) to start before timeout.
+
+@DPATCH@
+diff -urNad yxa-0.91~/src/Makefile.in yxa-0.91/src/Makefile.in
+--- yxa-0.91~/src/Makefile.in	2006-08-03 19:36:03.000000000 +0200
++++ yxa-0.91/src/Makefile.in	2006-08-03 19:36:04.000000000 +0200
+@@ -49,6 +49,7 @@
+ 	local.erl \
+ 	logger.erl \
+ 	lookup.erl \
++	net_util.erl \
+ 	outgoingproxy.erl \
+ 	pstnproxy.erl \
+ 	registrar.erl \
+diff -urNad yxa-0.91~/src/net_util.erl yxa-0.91/src/net_util.erl
+--- yxa-0.91~/src/net_util.erl	1970-01-01 01:00:00.000000000 +0100
++++ yxa-0.91/src/net_util.erl	2006-08-03 19:37:22.000000000 +0200
+@@ -0,0 +1,101 @@
++%%%-------------------------------------------------------------------
++%%% File    : net_util.erl
++%%% Author  : Mikael Magnusson <mikma@users.sourceforge.net>
++%%% Descrip.: Connect to Erlang nodes
++%%%
++%%% Created : 31 July 2006
++%%%           by Mikael Magnusson <mikma@users.sourceforge.net>
++%%%-------------------------------------------------------------------
++
++-module(net_util).
++
++-behaviour(gen_server).
++
++%% gen_server
++-export([
++	 init/1,
++	 code_change/3,
++	 handle_call/3,
++	 handle_cast/2,
++	 handle_info/2,
++	 terminate/2
++	]).
++
++%% api
++-export([
++	 connect/1, connect/2
++	]).
++
++-record(state, {pending_nodes}).
++
++%%--------------------------------------------------------------------
++%% Function: connect(Nodes, Timeout)
++%%           Nodes = list() of atom(), node names
++%% Descrip.: Tries to connect to each node using ping for Timeout 
++%%           milliseconds.
++%% Returns : ok | {error, timeout}
++%%--------------------------------------------------------------------
++connect(Nodes, Timeout) ->
++    {ok, Pid} = gen_server:start(?MODULE, [], []),
++    gen_server:call(Pid, {connect, Nodes, Timeout}, Timeout + 1000).
++
++connect(Nodes) ->
++    connect(Nodes, 5000).
++
++%%
++%% Implementation of gen_server callbacks
++%%
++init([]) ->
++    {ok, #state{}}.
++
++code_change(_OldVsn, State, _Extra) ->
++    {ok, State}.
++
++do_ping([], PendingNodes) ->
++    {ok, PendingNodes};
++do_ping([Node|Nodes], PendingNodes) ->
++    case net_adm:ping(Node) of
++	pong ->
++	    {ok, []};
++	pang ->
++	    NewPendingNodes = PendingNodes ++ [Node],
++	    do_ping(Nodes, NewPendingNodes)
++    end.
++
++handle_call({connect, Nodes, Timeout}, From, State) ->
++    {ok, PendingNodes} = do_ping(Nodes, []),
++    NewState = State#state{pending_nodes=PendingNodes},
++    case PendingNodes of
++	[] ->
++	    {reply, ok, NewState};
++	_Any ->
++	    {ok, _PingTimer} = timer:send_interval(500, {send_ping, From}),
++	    {ok, _Timer} = timer:send_after(Timeout, {timeout, From}),
++	    {noreply, NewState}
++    end;
++handle_call(_Request, _From, State) ->
++    {reply, ok, State}.
++
++handle_cast(stop, State) ->
++    {stop, normal, State};
++handle_cast(_Request, State) ->
++    {noreply, State}.
++
++handle_info({send_ping, From}, State) ->
++    {ok, PendingNodes} = do_ping(State#state.pending_nodes, []),
++    NewState = State#state{pending_nodes=PendingNodes},
++    case PendingNodes of
++	[] ->
++	    gen_server:reply(From, ok),
++	    {stop, normal, NewState};
++	_Any ->
++	    {noreply, NewState}
++    end;
++handle_info({timeout, From}, State) ->
++    gen_server:reply(From, {error, timeout}),
++    {stop, normal, State};
++handle_info(_Info, State) ->
++    {noreply, State}.
++
++terminate(_Reason, _State) ->
++    terminated.
+diff -urNad yxa-0.91~/src/sipserver.erl yxa-0.91/src/sipserver.erl
+--- yxa-0.91~/src/sipserver.erl	2006-08-03 19:35:49.000000000 +0200
++++ yxa-0.91/src/sipserver.erl	2006-08-03 19:36:04.000000000 +0200
+@@ -146,6 +146,7 @@
+ 	    case yxa_config:get_env(databaseservers) of
+ 		{ok, DbNodes} ->
+ 		    logger:log(debug, "Mnesia extra db nodes : ~p (needed for tables ~p)", [DbNodes, RemoteTables]),
++		    ok = net_util:connect(DbNodes),
+ 		    case mnesia:change_config(extra_db_nodes, DbNodes) of
+ 			{error, Reason} ->
+ 			    logger:log(error, "Startup problem: Could not add configured databaseservers: ~p",

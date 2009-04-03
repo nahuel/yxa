@@ -1,0 +1,8 @@
+debian/tmp/usr/lib/yxa
+debian/tmp/usr/sbin/* /usr/lib/yxa/bin
+yaws/docroot/*.yaws /usr/share/yxa/www
+yaws/docroot/HEAD /usr/share/yxa/www
+yaws/docroot/BOTTOM /usr/share/yxa/www
+yaws/docroot/style.css /usr/share/yxa/www
+yaws/docroot/pix/*.png /usr/share/yxa/www/pix
+debian/yxa_yaws /usr/lib/yxa/bin

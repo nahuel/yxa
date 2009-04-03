@@ -1,0 +1,9 @@
+etc/yxa
+var/run/yxa
+var/lib/yxa
+var/lib/yxa/db
+var/lib/yxa/db/incomingproxy
+var/lib/yxa/db/appserver
+var/lib/yxa/db/outgoingproxy
+var/lib/yxa/db/pstnproxy
+var/lib/yxa/db/eventserver
