@@ -10,5 +10,5 @@ ssl_util
 ipv6_v6only
 init_start
 presence_update
-#loop_fix_orig_uri
+loop_fix_orig_uri
 #fix_eldap_build
