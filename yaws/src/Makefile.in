@@ -18,6 +18,21 @@ exec_prefix=${prefix}
 builddir = @builddir@
 local_file = @local_file@
 
+datadir = @datadir@
+localstatedir = @localstatedir@
+
+ERLANG_LIB_VER_asn1 = @ERLANG_LIB_VER_asn1@
+ERLANG_LIB_VER_kernel = @ERLANG_LIB_VER_kernel@
+ERLANG_LIB_VER_mnesia = @ERLANG_LIB_VER_mnesia@
+ERLANG_LIB_VER_ssl = @ERLANG_LIB_VER_ssl@
+ERLANG_LIB_VER_stdlib = @ERLANG_LIB_VER_stdlib@
+ERLANG_LIB_VER_yaws = @ERLANG_LIB_VER_yaws@
+ERLANG_LIB_VER_SUBST = @ERLANG_LIB_VER_SUBST@
+
+docrootdir = $(datadir)/yxa/docroot
+tmpdir = $(localstatedir)/run/yxa
+logdir = $(localstatedir)/log/yxa
+
 ERLC = @ERLC@
 ERL = @ERL@
 
@@ -30,7 +45,13 @@ doc_dir = ../../doc
 
 mkinstalldirs = $(SHELL) $(top_srcdir)/scripts/mkinstalldirs
 
+systools_make_script = \
+	$(ERLC) -pa $(ebin_dir) -I$(srcdir) $(ebin_dir)/$*.rel
+
 erl_FILES = \
+	yxa_yaws_app.erl \
+	yxa_yaws_ctl.erl \
+	yxa_yaws_sup.erl \
 	yxa_yaws_util.erl
 
 imported_hrl_FILES = \
@@ -46,14 +67,20 @@ yxa_hrl_FILES = $(imported_hrl_FILES) $(hrl_FILES)
 CC = gcc
 CFLAGS = -Wall
 
+EFLAGS = -W +debug_info -DDOCROOT=\"$(docrootdir)\" -DCACHEDIR=\"$(tmpdir)\" -DLOGDIR=\"$(logdir)\"
+
 beam_FILES = $(addprefix $(ebin_dir)/, $(erl_FILES:.erl=.beam))
 
-all: $(beam_FILES)
+boot_FILES = yxa_yaws.boot
 
-install: $(beam_FILES) $(hrl_FILES)
+app_FILES = $(addprefix $(ebin_dir)/, $(boot_FILES:.boot=.app))
+
+all: $(beam_FILES) $(app_FILES) $(boot_FILES)
+
+install: $(beam_FILES) $(hrl_FILES) $(boot_FILES)
 	$(mkinstalldirs) $(DESTDIR)$(beamdir)
 	$(mkinstalldirs) $(DESTDIR)$(includedir)
-	for p in $(beam_FILES); do \
+	for p in $(beam_FILES) $(app_FILES) $(boot_FILES); do \
 	  $(install_DATA) $$p $(DESTDIR)$(beamdir)/$$f ; \
 	done
 	for p in $(hrl_FILES); do \
@@ -87,5 +114,13 @@ SUFFIXES = .c .o .hrl .beam .erl .boot .rel .rel-in .app .app-in
 .SUFFIXES: .c .o .hrl .beam .erl .boot .rel .rel-in .app .app-in
 
 $(ebin_dir)/%.beam:	$(srcdir)/%.erl
-	$(ERLC) -o $(ebin_dir) -I$(srcdir) -I$(top_srcdir)/src/include/ -W +debug_info $<
+	$(ERLC) -o $(ebin_dir) -I$(srcdir) -I$(top_srcdir)/src/include/ $(EFLAGS) $<
 
+$(ebin_dir)/%.app:	$(srcdir)/%.app-in
+	cp $< $@
+
+$(ebin_dir)/%.rel:	$(srcdir)/%.rel-in
+	sed $(ERLANG_LIB_VER_SUBST) $< > $@
+
+yxa_yaws.boot: $(ebin_dir)/yxa_yaws.app $(ebin_dir)/yxa_yaws.rel
+	$(systools_make_script)
