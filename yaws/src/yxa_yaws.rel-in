@@ -1,0 +1,6 @@
+%% Erlang OTP R11B-1 library versions
+{release, {"YXA embedded Yaws web server","0.0"}, {erts, "5.2"},
+ [{kernel,"@ERLANG_LIB_VER_kernel@"},
+  {stdlib,"@ERLANG_LIB_VER_stdlib@"},
+  {yaws, "@ERLANG_LIB_VER_yaws@"},
+  {yxa_yaws, "0.0"}]}.

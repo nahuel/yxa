@@ -1,0 +1,13 @@
+{application, yxa_yaws,
+ [{description, "YXA Yaws server"},
+  {vsn,"0.0"},
+  {modules, [
+	     yxa_yaws_app,
+	     yxa_yaws_ctl
+	    ]},
+  {registered, [
+	       ]},
+%%  {mod, {yxa_yaws_app, []}},
+  {env, []},
+  {applications,
+        [kernel, stdlib, yaws]}]}.
