@@ -27,6 +27,11 @@
 
 -export([test/0]).
 
+-export([
+	 start/0,
+	 stop/0
+	]).
+
 %%--------------------------------------------------------------------
 %% Include files
 %%--------------------------------------------------------------------
@@ -34,6 +39,11 @@
 -include("sipsocket.hrl").
 -include("pstnproxy.hrl").
 
+start() ->
+    application:start(?MODULE).
+
+stop() ->
+    application:stop(?MODULE).
 
 %%====================================================================
 %% Behaviour functions

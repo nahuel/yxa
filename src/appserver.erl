@@ -23,6 +23,11 @@
 
 -export([test/0]).
 
+-export([
+	 start/0,
+	 stop/0
+	]).
+
 %%--------------------------------------------------------------------
 %%% Application specific exports, exported for CPL subsystem
 %%--------------------------------------------------------------------
@@ -47,6 +52,11 @@
 -define(APPSERVER_GLUE_TIMEOUT, 1200 * 1000).
 -define(SIPPIPE_TIMEOUT, 900).
 
+start() ->
+    application:start(?MODULE).
+
+stop() ->
+    application:stop(?MODULE).
 
 %%====================================================================
 %% Behaviour functions

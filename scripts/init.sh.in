@@ -320,7 +320,7 @@ else
 		    fi
 		fi
 	    fi
-	    ${erl} -boot "$bootfile" -pz ${beamdir} \
+	    ${erl} $boot_start_ssl -s ${PROGRAMNAME} -pz ${beamdir} \
 		$EXTRA_ERL_ARGUMENTS \
 		-name $name \
 		-yxa_config $configpath \
