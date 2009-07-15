@@ -13,3 +13,4 @@ presence_update
 loop_fix_orig_uri
 #fix_eldap_build
 fix_via_sentby_proto
+fix_resubscribe
