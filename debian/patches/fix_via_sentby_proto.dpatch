@@ -1,0 +1,34 @@
+#! /bin/sh /usr/share/dpatch/dpatch-run
+## fix_via_sentby_proto.dpatch by  <mikma@users.sourceforge.net>
+##
+## All lines beginning with `## DP:' are a description of the patch.
+## DP: Don't include transport protocol in via_sentby used in transaction
+## DP: matching. Since CANCEL for an INVITE may not be sent using same
+## DP: transport.
+
+@DPATCH@
+diff -urNad yxa-1.0+20090326~/src/sipheader.erl yxa-1.0+20090326/src/sipheader.erl
+--- yxa-1.0+20090326~/src/sipheader.erl	2009-03-25 09:17:49.000000000 +0100
++++ yxa-1.0+20090326/src/sipheader.erl	2009-06-25 22:12:07.000000000 +0200
+@@ -815,11 +815,10 @@
+ 
+ %%--------------------------------------------------------------------
+ %% @spec    (Via) ->
+-%%            {Proto, Host, Port}
++%%            {Host, Port}
+ %%
+ %%            Via = #via{}
+ %%
+-%%            Proto = string()
+ %%            Host  = string()
+ %%            Port  = integer()
+ %%
+@@ -827,7 +826,7 @@
+ %% @end
+ %%--------------------------------------------------------------------
+ via_sentby(Via) when is_record(Via, via) ->
+-    {Via#via.proto, Via#via.host, Via#via.port}.
++    {Via#via.host, Via#via.port}.
+ 
+ %%--------------------------------------------------------------------
+ %% @spec    (Request) ->
