@@ -13,5 +13,6 @@ yxa (1.0+20090326-1~1) UNRELEASED; urgency=low
   * Fix build eldap error.
   * Fix CANCEL Via transport matching.
   * Fix Re-SUBSCRIBE handling in eventserver.
+  * Update test case after changes of loop detection.
 
- -- Mikael Magnusson <mikma@users.sourceforge.net>  Sat, 29 Mar 2008 21:03:52 +0100
+ -- Mikael Magnusson <mikma@users.sourceforge.net>  Thu, 16 Jul 2009 22:46:04 +0200
