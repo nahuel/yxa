@@ -6,9 +6,9 @@
 ## DP: disabled.
 
 @DPATCH@
-diff -urNad yxa-1.0~/src/transportlayer/sipsocket_udp.erl yxa-1.0/src/transportlayer/sipsocket_udp.erl
---- yxa-1.0~/src/transportlayer/sipsocket_udp.erl	2007-10-17 16:41:21.000000000 +0200
-+++ yxa-1.0/src/transportlayer/sipsocket_udp.erl	2008-03-10 20:35:40.000000000 +0100
+diff -urNad yxa-1.0+20090326~/src/transportlayer/sipsocket_udp.erl yxa-1.0+20090326/src/transportlayer/sipsocket_udp.erl
+--- yxa-1.0+20090326~/src/transportlayer/sipsocket_udp.erl	2009-03-31 22:55:53.000000000 +0200
++++ yxa-1.0+20090326/src/transportlayer/sipsocket_udp.erl	2009-04-06 22:30:35.000000000 +0200
 @@ -75,6 +75,8 @@
  %% v6 sockets have a default receive buffer size of 1k in Erlang R9C-0
  -define(SOCKETOPTSv6, [{reuseaddr, true}, binary, inet6, {buffer, 8 * 1024}]).
@@ -25,15 +25,15 @@ diff -urNad yxa-1.0~/src/transportlayer/sipsocket_udp.erl yxa-1.0/src/transportl
 -    SocketOpts = [{ip, IP} | ?SOCKETOPTSv6],
 +    SocketOpts0 = [{ip, IP} | ?SOCKETOPTSv6],
 +    SocketOpts = case os:type() of
-+		     {unix,linux} -> [{raw,  ?IPPROTO_IPV6, ?IPV6_V6ONLY, <<1:32/native>>} | SocketOpts0]
-+%		     _ -> SocketOpts0
++		     {unix,linux} -> [{raw,  ?IPPROTO_IPV6, ?IPV6_V6ONLY, <<1:32/native>>} | SocketOpts0];
++		     _ -> SocketOpts0
 +		 end,
      case gen_udp:open(Port, SocketOpts) of
  	{ok, Socket} ->
  	    HostPort1 = get_localaddr(Socket, "[::]"),
-diff -urNad yxa-1.0~/src/transportlayer/tcp_listener.erl yxa-1.0/src/transportlayer/tcp_listener.erl
---- yxa-1.0~/src/transportlayer/tcp_listener.erl	2007-10-17 16:41:21.000000000 +0200
-+++ yxa-1.0/src/transportlayer/tcp_listener.erl	2008-03-10 20:35:40.000000000 +0100
+diff -urNad yxa-1.0+20090326~/src/transportlayer/tcp_listener.erl yxa-1.0+20090326/src/transportlayer/tcp_listener.erl
+--- yxa-1.0+20090326~/src/transportlayer/tcp_listener.erl	2009-03-31 22:55:53.000000000 +0200
++++ yxa-1.0+20090326/src/transportlayer/tcp_listener.erl	2009-04-06 22:29:31.000000000 +0200
 @@ -55,6 +55,8 @@
  -define(SOCKETOPTS, [binary, {packet, 0}, {active, false}, {reuseaddr, true}]).
  %% The ssl module does not support reuseaddr
