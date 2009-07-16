@@ -8,8 +8,8 @@
 
 @DPATCH@
 diff -urNad yxa-1.0+20090326~/src/sipheader.erl yxa-1.0+20090326/src/sipheader.erl
---- yxa-1.0+20090326~/src/sipheader.erl	2009-03-25 09:17:49.000000000 +0100
-+++ yxa-1.0+20090326/src/sipheader.erl	2009-06-25 22:12:07.000000000 +0200
+--- yxa-1.0+20090326~/src/sipheader.erl	2009-07-16 22:57:34.000000000 +0200
++++ yxa-1.0+20090326/src/sipheader.erl	2009-07-16 22:57:58.000000000 +0200
 @@ -815,11 +815,10 @@
  
  %%--------------------------------------------------------------------
@@ -32,3 +32,21 @@ diff -urNad yxa-1.0+20090326~/src/sipheader.erl yxa-1.0+20090326/src/sipheader.e
  
  %%--------------------------------------------------------------------
  %% @spec    (Request) ->
+@@ -1595,7 +1594,7 @@
+ 
+     autotest:mark(?LINE, "get_server_transaction_id/1 - 1.2"),
+     %% check result
+-    {"z9hG4bK-really-unique", {"SIP/2.0/TLS", "sip.example.org", 5061}, "INVITE"} = Invite1Id,
++    {"z9hG4bK-really-unique", {"sip.example.org", 5061}, "INVITE"} = Invite1Id,
+ 
+     autotest:mark(?LINE, "get_server_transaction_id/1 - 2"),
+     %% make an ACK for an imagined 3xx-6xx response with to-tag "t-123"
+@@ -1695,7 +1694,7 @@
+     %% test via_sentby(Via)
+     %%--------------------------------------------------------------------
+     autotest:mark(?LINE, "via_sentby/1 - 1"),
+-    {"proto", "host", 1234} = via_sentby(#via{proto="proto", host="host", port=1234}),
++    {"host", 1234} = via_sentby(#via{proto="proto", host="host", port=1234}),
+ 
+ 
+     %% test via_print(Via)

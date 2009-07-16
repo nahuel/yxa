@@ -14,5 +14,6 @@ yxa (1.0+20090326-1~1) UNRELEASED; urgency=low
   * Fix CANCEL Via transport matching.
   * Fix Re-SUBSCRIBE handling in eventserver.
   * Update test case after changes of loop detection.
+  * Update test cases after changes of Via transport matching.
 
- -- Mikael Magnusson <mikma@users.sourceforge.net>  Thu, 16 Jul 2009 22:46:04 +0200
+ -- Mikael Magnusson <mikma@users.sourceforge.net>  Thu, 16 Jul 2009 22:59:12 +0200
