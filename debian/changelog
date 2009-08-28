@@ -1,18 +1,14 @@
-yxa (1.0+20090326-1~1) UNRELEASED; urgency=low
+yxa (1.0+20090827-1~1) UNRELEASED; urgency=low
   * Initial release (Closes: #377617)
   * Auto-detect SSL-PKIX.hrl renamed to OTP-PKIX.hrl in OTP R12B-0.
-  * Enable IPV6_V6ONLY on IPv6 sockets.
   * Start applications using -s switch to erl instead of using custom boot
     file, except when running distribution over ssl.
   * Add LSB keyword section to init file, and return proper exit status
     codes.
-  * Fix bug in presence update.
   * Updated to policy version 3.7.3. No changes required.
   * Fixed lintian warning: debian-rules-ignores-make-clean-error.
   * Fixed loop detection.
-  * Fix build eldap error.
   * Fix CANCEL Via transport matching.
-  * Fix Re-SUBSCRIBE handling in eventserver.
   * Update test case after changes of loop detection.
   * Update test cases after changes of Via transport matching.
 

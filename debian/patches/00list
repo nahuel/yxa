@@ -1,16 +1,11 @@
 autoconf
 autoconf_gen
 config
-inet_dns
 net_util
 yxa_yaws_makefile
 yxa_yaws
 erlang-auto-rel
 ssl_util
-ipv6_v6only
 init_start
-presence_update
 loop_fix_orig_uri
-#fix_eldap_build
 fix_via_sentby_proto
-fix_resubscribe
