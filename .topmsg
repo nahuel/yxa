@@ -1,0 +1,7 @@
+From: Mikael Magnusson <mikma264@gmail.com>
+Subject: [PATCH] t/fix/init_start
+
+Start applications using -s switch to erl instead of using custom
+boot file.
+
+Signed-off-by: Mikael Magnusson <mikma@users.sourceforge.net>
