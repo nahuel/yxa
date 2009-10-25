@@ -3,6 +3,8 @@
 
 QUILT_PATCH_DIR ?= debian/patches
 
+TG_BRANCHES := t/feature/yxa_yaws,t/feature/yxa_yaws_makefile,t/fix/autoconf,t/fix/erlang-auto-rel,t/fix/fix_via_sentby_proto,t/fix/init_start,t/fix/loop_fix_orig_uri,t/fix/net_util
+
 include /usr/share/cdbs/1/rules/debhelper.mk
 include /usr/share/cdbs/1/class/autotools.mk
 include /usr/share/cdbs/1/rules/patchsys-quilt.mk
@@ -60,20 +62,10 @@ DEB_CONFIGURE_EXTRA_FLAGS := \
 		--disable-erlang-version-check \
 		LDFLAGS="-Wl,-z,defs"
 
-DEB_AUTO_UPDATE_ACLOCAL := 1.9
-DEB_AUTO_UPDATE_AUTOCONF := 2.63
+DEB_AUTO_UPDATE_ACLOCAL := 1.10
+DEB_AUTO_UPDATE_AUTOCONF := ' '
 
 DEB_DESTDIR = $(CURDIR)/debian/tmp/
-
-# # Build architecture-dependent files here.
-# binary-arch:
-# 	dh_testdir
-# 	dh_testroot
-# 	chmod a+x $(CURDIR)/debian/yxa_yaws
-
-# CDBS
-# 	dh_installchangelogs CHANGES
-# dh_installchangelogs -pyxa
 
 print-version:
 	@@echo "Debian version:          $(DEBVERSION)"

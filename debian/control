@@ -3,8 +3,8 @@ Section: net
 Priority: optional
 Maintainer: Debian VoIP Team <pkg-voip-maintainers@lists.alioth.debian.org>
 Uploaders: Kilian Krause <kilian@debian.org>, Jose Carlos Garcia Sogo <jsogo@debian.org>, Mark Purcell <msp@debian.org>, Mikael Magnusson <mikma@users.sourceforge.net>
-Build-Depends: debhelper (>= 7), dpatch, autotools-dev, erlang-base
- | erlang-base-hipe, erlang-dev, erlang-nox, yaws
+Build-Depends: debhelper (>= 7), dpatch, autotools-dev, automake (>=
+ 2.64), erlang-base | erlang-base-hipe, erlang-dev, erlang-nox, yaws
 Standards-Version: 3.7.3
 Homepage: http://www.stacken.kth.se/project/yxa/
 Vcs-Svn: svn://svn.debian.org/pkg-voip/yxa/trunk/
