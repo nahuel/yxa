@@ -128,7 +128,7 @@ add_server_transaction(Request, Pid, Desc)
 
 add_server_transaction(Tables, Request, Pid, Desc)
   when is_record(Tables, tables), is_record(Request, request), is_pid(Pid), is_list(Desc) ->
-    case sipheader:get_server_transaction_id(Request) of
+    case get_server_transaction_id(Request) of
 	error ->
 	    logger:log(error, "transactionstatelist: Could not get server transaction id for request"),
 	    error;
@@ -138,7 +138,7 @@ add_server_transaction(Tables, Request, Pid, Desc)
 			    %% For INVITE, we must store an extra Id to match ACK to the INVITE transaction.
 			    %% We must do this even for RFC3261 INVITE since the ACK might arrive through
 			    %% another proxy that is not RFC3261 compliant.
-			    sipheader:get_server_transaction_ack_id_2543(Request);
+			    get_server_transaction_ack_id_2543(Request);
 			_ ->
 			    none
 		    end,
@@ -187,16 +187,43 @@ empty(Tables) when is_record(Tables, tables) ->
 get_server_transaction_using_request(Request) when is_record(Request, request) ->
     get_server_transaction_using_request(?DEFAULT_TABLES, Request).
 
-get_server_transaction_using_request(Tables, Request) when is_record(Tables, tables), is_record(Request, request) ->
-    case sipheader:get_server_transaction_id(Request) of
-	is_2543_ack ->
-	    get_server_transaction_ack_2543(Tables, Request);
+get_server_transaction_using_request(Tables, #request{method = "CANCEL"} = Request) when is_record(Tables, tables) ->
+    Header = Request#request.header,
+    %% XXX not only INVITE can be cancelled, RFC3261 9.2 says we should find the
+    %% transaction that is being handled by 'assuming the method is anything but
+    %% CANCEL or ACK'.
+    {CSeqNum, _} = sipheader:cseq(Header),
+    %% When looking for the corresponding INVITE transaction, we have to change the
+    %% CSeq method of this header to INVITE, in case we received it from a RFC2543 client
+    %% (RFC2543 backwards-compatible transaction matching includes the whole CSeq, this is
+    %% probably an error in RFC3261 #9.2 that refers to #17.2.3 which does not say that
+    %% CANCEL matches a transaction even though the CSeq method differs)
+    IHeader = keylist:set("CSeq", [sipheader:cseq_print({CSeqNum, "INVITE"})], Header),
+    Invite = Request#request{method = "INVITE",
+			     header = IHeader
+			    },
+    case get_server_transaction_id(Invite) of
 	error ->
 	    logger:log(error, "Transaction state list: Could not get server transaction for request"),
 	    error;
 	Id ->
 	    case get_elem(Tables, server, Id) of
-		none when Request#request.method == "ACK" ->
+		none ->
+		    none;
+		Res when is_record(Res, transactionstate) ->
+		    Res
+	    end
+    end;
+get_server_transaction_using_request(Tables, #request{method = "ACK"} = Request) when is_record(Tables, tables) ->
+    case get_server_transaction_id(Request) of
+	error ->
+	    logger:log(error, "Transaction state list: Could not get server transaction for request"),
+	    error;
+	is_2543_ack ->
+	    get_server_transaction_ack_2543(Tables, Request);
+	Id ->
+	    case get_elem(Tables, server, Id) of
+		none ->
 		    %% If the UAC is 2543 compliant, but there is a 3261 compliant proxy between UAC and us,
 		    %% the 3261 proxy will possibly generate another branch for the ACK than the INVITE
 		    %% because the ACK might have a To-tag. If this happens, we must use 2543 methods to find
@@ -208,6 +235,17 @@ get_server_transaction_using_request(Tables, Request) when is_record(Tables, tab
 		    logger:log(debug, "Transaction state list: Found no matching server "
 			       "transaction for ACK using RFC3261 methods, trying RFC2543 too"),
 		    get_server_transaction_ack_2543(Tables, Request);
+		Res when is_record(Res, transactionstate) ->
+		    Res
+	    end
+    end;
+get_server_transaction_using_request(Tables, Request) when is_record(Tables, tables), is_record(Request, request) ->
+    case get_server_transaction_id(Request) of
+	error ->
+	    logger:log(error, "Transaction state list: Could not get server transaction for request"),
+	    error;
+	Id ->
+	    case get_elem(Tables, server, Id) of
 		none ->
 		    none;
 		Res when is_record(Res, transactionstate) ->
@@ -235,7 +273,7 @@ get_server_transaction_using_request(Tables, Request) when is_record(Tables, tab
 get_server_transaction_ack_2543(Tables, Request) when is_record(Request, request) ->
     %% ACK requests are matched to transactions differently if they are not received from
     %% an RFC3261 compliant device, see RFC3261 17.2.3
-    case sipheader:get_server_transaction_ack_id_2543(Request) of
+    case get_server_transaction_ack_id_2543(Request) of
 	error ->
 	    logger:log(error, "Transaction state list: Could not get server transaction RFC2543 ack-id for request"),
 	    error;
@@ -656,7 +694,7 @@ monitor_format(TList) when is_list(TList) ->
 
 monitor_format2([], Res) ->
     lists:reverse(Res);
-monitor_format2([H|T], Res) when record(H, transactionstate) ->
+monitor_format2([H|T], Res) when is_record(H, transactionstate) ->
     Str =
 	case H#transactionstate.result of
 	    none ->
@@ -783,6 +821,237 @@ get_all_entries(Tables) ->
 	end,
     lists:foldl(F, [], ets:tab2list(Tables#tables.ref_to_t)).
 
+
+%%--------------------------------------------------------------------
+%% @spec    (Request) ->
+%%            Id
+%%
+%%            Request = #request{}
+%%
+%%            Id = term() | is_2543_ack | error
+%%
+%% @doc     Turn a request into a transaction id, that can be stored
+%%          in our transaction state database together with a
+%%          reference to the process handling this request (server
+%%          transaction handler) if this is a new transaction, or
+%%          looked up in the database to find an existing handler if
+%%          this is a resend of the same request or an ACK to a
+%%          non-2xx response to INVITE. This is specified in RFC3261
+%%          #17.2.3 (Matching Requests to Server Transactions).
+%% @end
+%%--------------------------------------------------------------------
+get_server_transaction_id(Request) ->
+    %% We do a catch around this since it includes much parsing of the
+    %% request, and parsing data received from the network is a fragile thing.
+    case catch guarded_get_server_transaction_id(Request) of
+	{'EXIT', E} ->
+	    logger:log(error, "=ERROR REPORT==== from get_server_transaction_id(~p) :~n~p", [Request, E]),
+	    error;
+	Id ->
+	    Id
+    end.
+
+guarded_get_server_transaction_id(Request) when is_record(Request, request) ->
+    TopVia = sipheader:topvia(Request#request.header),
+    %% XXX the branch is actually a token and should apparently be compared case-insensitively
+    %% http://bugs.sipit.net/show_bug.cgi?id=661
+    %% EXCEPT the z9hG4bK which should be compared with case sensitivity (sic)
+    Branch = sipheader:get_via_branch(TopVia),
+    case Branch of
+	"z9hG4bK" ++ _RestOfBranch ->
+	    M = case Request#request.method of
+		    "ACK" ->
+			%% RFC3261 #17.2.3, bullet #3 - when looking for server
+			%% transaction for ACK, the method of the transaction is INVITE
+			"INVITE";
+		    Other ->
+			Other
+		end,
+	    guarded_get_server_transaction_id_3261(M, TopVia);
+	_ ->
+	    guarded_get_server_transaction_id_2543(Request, TopVia)
+    end.
+
+%%--------------------------------------------------------------------
+%% @spec    (Response) ->
+%%            Id
+%%
+%%            Response = #response{}
+%%
+%%            Id = term() | error
+%%
+%% @doc     When we receive a response, we use this function to get an
+%%          Id which we look up in our transaction state database to
+%%          see if we have a client transaction handler that should
+%%          get this response. This is specified in RFC3261 #17.1.3
+%%          (Matching Responses to Client Transactions).
+%% @end
+%%--------------------------------------------------------------------
+get_client_transaction_id(Response) ->
+    %% We do a catch around this since it includes much parsing of the
+    %% request, and parsing data received from the network is a fragile thing.
+    case catch guarded_get_client_transaction_id(Response) of
+	{'EXIT', E} ->
+	    logger:log(error, "=ERROR REPORT==== from get_client_transaction_id(~p) :~n~p", [Response, E]),
+	    error;
+	Id ->
+	    Id
+    end.
+
+guarded_get_client_transaction_id(Response) when is_record(Response, response) ->
+    Header = Response#response.header,
+    TopVia = sipheader:topvia(Header),
+    Branch = sipheader:get_via_branch(TopVia),
+    {_, CSeqMethod} = sipheader:cseq(Header),
+    {Branch, CSeqMethod}.
+
+%%--------------------------------------------------------------------
+%% @spec    (Request) ->
+%%            Id
+%%
+%%            Request = #request{}
+%%
+%%            Id = term() | error
+%%
+%% @doc     When we receive an ACK that has no RFC3261 Via branch
+%%          parameter, we use this function to get an Id that we then
+%%          look up in our transaction state database to try and find
+%%          an existing server transaction that this ACK should be
+%%          delivered to. This is specified in RFC3261 #17.2.3
+%%          (Matching Requests to Server Transactions). Note : When
+%%          using this function, you have to make sure the To-tag of
+%%          this ACK matches the To-tag of the response you think
+%%          this might be the ACK for!
+%%          Note : RFC3261 #17.2.3 relevant text : The ACK request
+%%          matches a transaction if the Request- URI, From tag,
+%%          Call-ID, CSeq number (not the method), and top Via header
+%%          field match those of the INVITE request which created the
+%%          transaction, and the To tag of the ACK matches the To tag
+%%          of the response sent by the server transaction.
+%%          Note : We are supposed to do the comparison of for
+%%          example, the URI, according to the matching rules for
+%%          URIs but that would require us to do a full table scan
+%%          for every ACK. XXX perhaps we should divide the Id into
+%%          two parts - one that is byte-by-byte and used as table
+%%          index, and another part for elements that require more
+%%          exhaustive matching.
+%% @end
+%%--------------------------------------------------------------------
+get_server_transaction_ack_id_2543(Request) ->
+    case catch guarded_get_server_transaction_ack_id_2543(Request) of
+	{'EXIT', E} ->
+	    logger:log(error, "=ERROR REPORT==== from get_server_transaction_ack_id_2543(~p) :~n~p", [Request, E]),
+	    error;
+	Id ->
+	    Id
+    end.
+
+guarded_get_server_transaction_ack_id_2543(Request) when is_record(Request, request) ->
+    {URI, Header} = {Request#request.uri, Request#request.header},
+    TopVia = remove_branch(sipheader:topvia(Header)),
+    CallID = sipheader:callid(Header),
+    {CSeqNum, _} = sipheader:cseq(Header),
+    FromTag = sipheader:get_tag(keylist:fetch('from', Header)),
+    %% We are supposed to match only on the CSeq number, but the entry we are
+    %% matching against is an INVITE and that INVITE had it's Id generated with
+    %% the full CSeq. Make it possible to match the INVITE with this Id.
+    FakeCSeq = {CSeqNum, "INVITE"},
+    {URI, FromTag, CallID, FakeCSeq, TopVia}.
+
+remove_branch(Via) when is_record(Via, via) ->
+    ParamDict = sipheader:param_to_dict(Via#via.param),
+    NewDict = dict:erase("branch", ParamDict),
+    Via#via{param = sipheader:dict_to_param(NewDict)}.
+
+%%--------------------------------------------------------------------
+%% @spec    (Method, TopVia) ->
+%%            Id
+%%
+%%            Method = list()
+%%            TopVia = #via{}
+%%
+%%            Id = term()
+%%
+%% @doc     Part of guarded_get_server_transaction_id(), called when
+%%          the top Via header is found to contain an RFC3261 branch
+%%          parameter. This is the straight forward case.
+%% @end
+%%--------------------------------------------------------------------
+guarded_get_server_transaction_id_3261(Method, TopVia) when is_list(Method), is_record(TopVia, via) ->
+    Branch = sipheader:get_via_branch_full(TopVia),
+    SentBy = via_sentby(TopVia),
+    {Branch, SentBy, Method}.
+
+%%--------------------------------------------------------------------
+%% @spec    (Request, TopVia) ->
+%%            Id
+%%
+%%            Request = #request{}
+%%            TopVia  = #via{}
+%%
+%%            Id = term() | is_2543_ack
+%%
+%% @doc     Part of guarded_get_server_transaction_id(), called when
+%%          the top Via header does NOT contain an RFC3261 branch
+%%          parameter. Creates an Id based on RFC3261 #17.2.3
+%%          (Matching Requests to Server Transactions). Note : We
+%%          could very well do the 2543 ack-id computation here, but
+%%          since the caller must do the To-tag verification for such
+%%          requests we just return is_2543_ack here to make sure the
+%%          caller does not miss this. Note : RFC3261 #17.2.3 has
+%%          different text for ACK (entirely separate, see previous
+%%          note), INVITE and "all other methods". However, it seems
+%%          to me that the instructions for INVITE and "all other"
+%%          are the same :
+%%          The INVITE request matches a transaction if the
+%%          Request-URI, To tag, From tag, Call-ID, CSeq, and top Via
+%%          header field match those of the INVITE request which
+%%          created the transaction. ... For all other request
+%%          methods, a request is matched to a transaction if the
+%%          Request-URI, To tag, From tag, Call-ID, CSeq (including
+%%          the method), and top Via header field match those of the
+%%          request that created the transaction.
+%%          Therefor, we just have non-ACK below.
+%% @end
+%%--------------------------------------------------------------------
+%%
+%% ACK
+%%
+guarded_get_server_transaction_id_2543(Request, _) when is_record(Request, request), Request#request.method == "ACK" ->
+    is_2543_ack;
+
+%%
+%% non-ACK
+%%
+guarded_get_server_transaction_id_2543(Request, TopVia) when is_record(Request, request), is_record(TopVia, via) ->
+    {URI, Header} = {Request#request.uri, Request#request.header},
+    CallID = sipheader:callid(Header),
+    CSeq = sipheader:cseq(Header),
+    FromTag = sipheader:get_tag(keylist:fetch('from', Header)),
+    ToTag = sipheader:get_tag(keylist:fetch('to', Header)),
+    {URI, ToTag, FromTag, CallID, CSeq, TopVia}.
+
+
+%%--------------------------------------------------------------------
+%% @spec    (Via) ->
+%%            {Host, Port}
+%%
+%%            Via = #via{}
+%%
+%%            Host  = string()
+%%            Port  = integer()
+%%
+%% @doc     Extract sent-by part of a via record()
+%% @end
+%%--------------------------------------------------------------------
+via_sentby(Via) when is_record(Via, via) ->
+    %% Before a request is sent, the client transport MUST insert a value of
+    %% the "sent-by" field into the Via header field.  This field contains
+    %% an IP address or host name, and port.
+    {Via#via.host, Via#via.port}.
+
+
+
 %%====================================================================
 %% Test functions
 %%====================================================================
@@ -794,7 +1063,113 @@ get_all_entries(Tables) ->
 %% @hidden
 %% @end
 %%--------------------------------------------------------------------
+-ifdef( YXA_NO_UNITTEST ).
 test() ->
+    {error, "Unit test code disabled at compile time"}.
+
+-else.
+
+test() ->
+    %% test via_sentby(Via)
+    %%--------------------------------------------------------------------
+    autotest:mark(?LINE, "via_sentby/1 - 1"),
+    {"host", 1234} = via_sentby(#via{host="host", port=1234}),
+
+    %% test get_server_transaction_id(Request)
+    %%--------------------------------------------------------------------
+    autotest:mark(?LINE, "get_server_transaction_id/1 - 1.1"),
+    %% get Id for INVITE with RFC3261 branch tag in top Via
+    InviteHeader1 = keylist:from_list([
+				       {"Via",	["SIP/2.0/TLS sip.example.org:5061;branch=z9hG4bK-really-unique"]},
+				       {"From", ["<sip:alice@example.org>;tag=f-abc"]},
+				       {"To",	["<sip:bob@example.org>"]},
+				       {"Call-ID", ["3c26722ce234@192.0.2.111"]},
+				       {"CSeq",	["2 INVITE"]}
+				      ]),
+    Invite1 = #request{method="INVITE", uri=sipurl:parse("sip:alice@example.org"),
+		       header=InviteHeader1, body = <<>>},
+    Invite1Id = get_server_transaction_id(Invite1),
+
+    autotest:mark(?LINE, "get_server_transaction_id/1 - 1.2"),
+    %% check result
+    {"z9hG4bK-really-unique", {"sip.example.org", 5061}, "INVITE"} = Invite1Id,
+
+    autotest:mark(?LINE, "get_server_transaction_id/1 - 2"),
+    %% make an ACK for an imagined 3xx-6xx response with to-tag "t-123"
+    AckInvite1Header_1 = keylist:set("To", ["<sip:bob@example.org>;tag=t-123"], InviteHeader1),
+    AckInvite1Header1  = keylist:set("CSeq", ["2 ACK"], AckInvite1Header_1),
+    AckInvite1 = #request{method="ACK", uri=sipurl:parse("sip:alice@example.org"),
+			  header=AckInvite1Header1, body = <<>>},
+
+    AckInvite1Id = get_server_transaction_id(AckInvite1),
+
+    autotest:mark(?LINE, "get_server_transaction_id/1 - 3"),
+    %% Test that the INVITE id matches the ACK id
+    Invite1Id = AckInvite1Id,
+
+    autotest:mark(?LINE, "get_server_transaction_id/1 - 4.1"),
+    %% get Id for INVITE with RFC2543 branch tag in top Via
+    Invite2543_1Header = keylist:from_list([
+					    {"Via",	["SIP/2.0/TLS sip.example.org:5061;branch=not-really-unique"]},
+					    {"From",	["<sip:alice@example.org>;tag=f-abc"]},
+					    {"To",	["<sip:bob@example.org>"]},
+					    {"Call-ID", ["3c26722ce234@192.0.2.111"]},
+					    {"CSeq",	["2 INVITE"]}
+					   ]),
+    Invite2543_1 = #request{method="INVITE", uri=sipurl:parse("sip:alice@example.org"),
+			    header=Invite2543_1Header, body = <<>>},
+    Invite2543_1Id = get_server_transaction_id(Invite2543_1),
+
+    autotest:mark(?LINE, "get_server_transaction_id/1 - 4.2"),
+    %% check result
+    {#sipurl{proto="sip", user="alice", pass=none, host="example.org", port=none, param_pairs={url_param,[]}},
+     none,
+     "f-abc",
+     "3c26722ce234@192.0.2.111", {"2", "INVITE"},
+     {via, "SIP/2.0/TLS", "sip.example.org", 5061, ["branch=not-really-unique"]}
+    } = Invite2543_1Id,
+
+    autotest:mark(?LINE, "get_server_transaction_id/1 - 5.1"),
+    %% for RFC2543 INVITE, we must also get the ACK-id to match future ACKs with this INVITE
+    Invite2543_1AckId = get_server_transaction_ack_id_2543(Invite2543_1),
+
+    autotest:mark(?LINE, "get_server_transaction_id/1 - 5.2"),
+    %% check result
+    {#sipurl{proto="sip", user="alice", pass=none, host="example.org", port=none, param_pairs={url_param,[]}},
+     "f-abc",
+     "3c26722ce234@192.0.2.111",
+     {"2","INVITE"},
+     {via,"SIP/2.0/TLS","sip.example.org",5061,[]}
+    } = Invite2543_1AckId,
+
+    autotest:mark(?LINE, "get_server_transaction_id/1 - 6"),
+    %% make an ACK for an imagined 3xx-6xx response with to-tag "t-123", check that
+    %% get_server_transaction_id refuses and tells us it is an 2543 ACK
+    AckInvite2543_1Header_1 = keylist:set("To", ["<sip:bob@example.org>;tag=t-123"], Invite2543_1Header),
+    AckInvite2543_1Header   = keylist:set("CSeq", ["2 ACK"], AckInvite2543_1Header_1),
+    AckInvite2543_1 = #request{method="ACK", uri=sipurl:parse("sip:alice@example.org"),
+			       header=AckInvite2543_1Header, body = <<>>},
+
+    is_2543_ack = get_server_transaction_id(AckInvite2543_1),
+
+    autotest:mark(?LINE, "get_server_transaction_id/1 - 7"),
+    %% now get the 2543 ACK id from the ACK
+    AckInvite2543_1Id = get_server_transaction_ack_id_2543(AckInvite2543_1),
+
+    autotest:mark(?LINE, "get_server_transaction_id/1 - 8"),
+    %% check that the 2543 ACK id matches the 2543 INVITE id
+    AckInvite2543_1Id = Invite2543_1AckId,
+
+
+    %% test get_client_transaction_id(Response)
+    %%--------------------------------------------------------------------
+    autotest:mark(?LINE, "get_client_transaction_id/1 - 1"),
+    Response1 = #response{status=699, reason="foo", header=Invite2543_1Header, body = <<>>},
+    {"not-really-unique", "INVITE"} = get_client_transaction_id(Response1),
+
+
+
+
     %% empty(Tables)
     %%--------------------------------------------------------------------
     autotest:mark(?LINE, "empty/1 - 1.0"),
@@ -825,13 +1200,16 @@ test() ->
     %%--------------------------------------------------------------------
     autotest:mark(?LINE, "add_server_transaction/4 - 1.0"),
     Message1Branch = "z9hG4bK-yxa-unittest-add_server_transaction3",
-    Message1 =
-	"INVITE sip:ft@example.org SIP/2.0\r\n"
-	"Via: SIP/2.0/YXA-TEST one.example.org;branch=" ++ Message1Branch ++ "\r\n"
+    MessageCommonHeaders1 =
 	"From: Test <sip:test@example.org;tag=abc>\r\n"
 	"To: Test <sip:test@example.org>\r\n"
 	"Call-Id: unittest-add_server_transaction3@yxa.example.org\r\n"
-	"CSeq: INVITE 1234\r\n"
+	"CSeq: INVITE 1234\r\n",
+
+    Message1 =
+	"INVITE sip:ft@example.org SIP/2.0\r\n"
+	"Via: SIP/2.0/YXA-TEST one.example.org;branch=" ++ Message1Branch ++ "\r\n"
+        ++ MessageCommonHeaders1 ++
 	"\r\n",
 
     Request1 = sippacket:parse(Message1, none),
@@ -851,9 +1229,40 @@ test() ->
 
     
 
+    autotest:mark(?LINE, "get_server_transaction_using_request/2 - 2"),
+    %% now, try finding server transaction using a CANCEL request
+    CancelMessage1 =
+	"CANCEL sip:ft@example.org SIP/2.0\r\n"
+	"Via: SIP/2.0/YXA-TEST one.example.org;branch=" ++ Message1Branch ++ "\r\n"
+	++ MessageCommonHeaders1 ++
+	"\r\n",
+
+    CancelRequest1 = sippacket:parse(CancelMessage1, none),
+
+    #transactionstate{type = server,
+		      id   = {Message1Branch, _TopVia1, "INVITE"}
+		     } = get_server_transaction_using_request(TestTables, CancelRequest1),
+
+    autotest:mark(?LINE, "get_server_transaction_using_request/2 - 3"),
+    %% try the same thing but with the CANCEL being received over another transport
+    CancelMessage2 =
+	"CANCEL sip:ft@example.org SIP/2.0\r\n"
+	"Via: SIP/2.0/YXA-TEST2 one.example.org;branch=" ++ Message1Branch ++ "\r\n"
+	++ MessageCommonHeaders1 ++
+	"\r\n",
+
+    CancelRequest2 = sippacket:parse(CancelMessage2, none),
+
+    #transactionstate{type = server,
+		      id   = {Message1Branch, _TopVia1, "INVITE"}
+		     } = get_server_transaction_using_request(TestTables, CancelRequest2),
+
+    
+
 
     %% clean up
     [true = ets:delete(TableName) || TableName <- TestTablesList],
+
 
     ok.
 
@@ -865,3 +1274,5 @@ test_check_is_empty_ets_table(TableName) when is_atom(TableName) ->
 	    Msg = io_lib:format("ETS table ~p is not empty", [TableName]),
 	    {error, lists:flatten(Msg)}
     end.
+
+-endif.
