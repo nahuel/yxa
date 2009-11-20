@@ -260,7 +260,7 @@ request("presence", _Request, YxaCtx, _Ctx) ->
 %%            Body         = binary() | list()
 %%            PkgState     = #my_state{}
 %%
-%% @doc     YXA event packages must export an is_allowed_subscribe/6
+%% @doc     YXA event packages must export an is_allowed_subscribe/7
 %%          function. This function is called when the event server
 %%          receives a subscription request for this event package,
 %%          and is the event packages chance to decide wether the
@@ -518,11 +518,11 @@ get_publish_etag_expires(Request, SIPuser, THandler) ->
 		    true ->
 			case Request#request.body of
 			    <<>> ->
-				%% Has body, is not a refresh but rather an update
-				{update, ETag1};
-			    _ ->
 				%%% "a PUBLISH request that refreshes event state MUST NOT have a body."
-				{refresh, ETag1}
+				{refresh, ETag1};
+			    _ ->
+				%% Has body, is not a refresh but rather an update
+				{update, ETag1}
 			end;
 		    false ->
 			transactionlayer:send_response_handler(THandler, 412, "Conditional Request Failed"),

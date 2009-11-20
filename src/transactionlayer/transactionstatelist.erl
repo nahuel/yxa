@@ -37,7 +37,9 @@
 	 set_result/2,
 	 update_transactionstate/1,
 	 get_length/0,
-	 get_all_entries/0
+	 get_all_entries/0,
+
+	 test/0
 	]).
 
 %%--------------------------------------------------------------------
@@ -51,7 +53,12 @@
 %%--------------------------------------------------------------------
 %% @type tables() = #tables{}.
 %%                  no description
--record(tables, {ref_to_t, pid_to_ref, ack_to_ref, typeid_to_ref}).
+-record(tables, {ref_to_t,
+		 pid_to_ref,
+		 ack_to_ref,
+		 typeid_to_ref,
+		 statistics
+		}).
 
 %%--------------------------------------------------------------------
 %% Macros
@@ -59,6 +66,17 @@
 %% Transaction expire is just a safety-net thing. All transactions should
 %% terminate by themselves long before this.
 -define(TRANSACTION_EXPIRE, 900).
+
+%% we generally use named tables in this module, but to facilitate testing some
+%% functions (the ones tested typically) provide the opportunity to supply a #tables
+%% record instead.
+-define(DEFAULT_TABLES, #tables{ref_to_t      = transactionstate_ref_to_t,
+				pid_to_ref    = transactionstate_pid_to_ref,
+				ack_to_ref    = transactionstate_ack_to_ref,
+				typeid_to_ref = transactionstate_typeid_to_ref,
+				statistics    = yxa_statistics
+			       }
+	).
 
 %%====================================================================
 %% External functions
@@ -82,8 +100,12 @@
 %%--------------------------------------------------------------------
 add_client_transaction(Method, Branch, Pid, Desc)
   when is_list(Method), is_list(Branch), is_pid(Pid), is_list(Desc) ->
+    add_client_transaction(?DEFAULT_TABLES, Method, Branch, Pid, Desc).
+
+add_client_transaction(Tables, Method, Branch, Pid, Desc)
+  when is_list(Method), is_list(Branch), is_pid(Pid), is_list(Desc) ->
     Id = {Branch, Method},
-    add(client, Id, none, Pid, Desc).
+    add(Tables, client, Id, none, Pid, Desc).
 
 %%--------------------------------------------------------------------
 %% @spec    (Request, Pid, Desc) ->
@@ -100,9 +122,13 @@ add_client_transaction(Method, Branch, Pid, Desc)
 %% @doc     Add a new transaction state entry to SocketList.
 %% @end
 %%--------------------------------------------------------------------
-add_server_transaction(Request, Pid, Desc)
+add_server_transaction(Request, Pid, Desc) 
   when is_record(Request, request), is_pid(Pid), is_list(Desc) ->
-    case sipheader:get_server_transaction_id(Request) of
+    add_server_transaction(?DEFAULT_TABLES, Request, Pid, Desc).
+
+add_server_transaction(Tables, Request, Pid, Desc)
+  when is_record(Tables, tables), is_record(Request, request), is_pid(Pid), is_list(Desc) ->
+    case get_server_transaction_id(Request) of
 	error ->
 	    logger:log(error, "transactionstatelist: Could not get server transaction id for request"),
 	    error;
@@ -112,16 +138,16 @@ add_server_transaction(Request, Pid, Desc)
 			    %% For INVITE, we must store an extra Id to match ACK to the INVITE transaction.
 			    %% We must do this even for RFC3261 INVITE since the ACK might arrive through
 			    %% another proxy that is not RFC3261 compliant.
-			    sipheader:get_server_transaction_ack_id_2543(Request);
+			    get_server_transaction_ack_id_2543(Request);
 			_ ->
 			    none
 		    end,
-	    add(server, Id, AckId, Pid, Desc)
+	    add(Tables, server, Id, AckId, Pid, Desc)
     end.
 
 %%--------------------------------------------------------------------
 %% @spec    () ->
-%%            TStateList
+%%            {ok, TStateList}
 %%
 %%            TStateList = #transactionstatelist{}
 %%
@@ -129,12 +155,19 @@ add_server_transaction(Request, Pid, Desc)
 %% @end
 %%--------------------------------------------------------------------
 empty() ->
-    Ref2t = ets:new(transactionstate_ref_to_t, [public, set, named_table]),
-    Pid2ref = ets:new(transactionstate_pid_to_ref, [public, bag, named_table]),
-    Ack2ref = ets:new(transactionstate_ack_to_ref, [public, set, named_table]),
-    TypeId2ref = ets:new(transactionstate_typeid_to_ref, [public, set, named_table]),
-    Tables = #tables{ref_to_t=Ref2t, pid_to_ref=Pid2ref, ack_to_ref=Ack2ref, typeid_to_ref=TypeId2ref},
-    #transactionstatelist{tables=Tables}.
+    empty(?DEFAULT_TABLES).
+
+empty(Tables) when is_record(Tables, tables) ->
+    Ref2t = ets:new(Tables#tables.ref_to_t, [public, set, named_table]),
+    Pid2ref = ets:new(Tables#tables.pid_to_ref, [public, bag, named_table]),
+    Ack2ref = ets:new(Tables#tables.ack_to_ref, [public, set, named_table]),
+    TypeId2ref = ets:new(Tables#tables.typeid_to_ref, [public, set, named_table]),
+    NewTables = Tables#tables{ref_to_t      = Ref2t,
+			      pid_to_ref    = Pid2ref,
+			      ack_to_ref    = Ack2ref,
+			      typeid_to_ref = TypeId2ref
+			     },
+    {ok, #transactionstatelist{tables = NewTables}}.
 
 
 %%--------------------------------------------------------------------
@@ -152,15 +185,45 @@ empty() ->
 %% @end
 %%--------------------------------------------------------------------
 get_server_transaction_using_request(Request) when is_record(Request, request) ->
-    case sipheader:get_server_transaction_id(Request) of
-	is_2543_ack ->
-	    get_server_transaction_ack_2543(Request);
+    get_server_transaction_using_request(?DEFAULT_TABLES, Request).
+
+get_server_transaction_using_request(Tables, #request{method = "CANCEL"} = Request) when is_record(Tables, tables) ->
+    Header = Request#request.header,
+    %% XXX not only INVITE can be cancelled, RFC3261 9.2 says we should find the
+    %% transaction that is being handled by 'assuming the method is anything but
+    %% CANCEL or ACK'.
+    {CSeqNum, _} = sipheader:cseq(Header),
+    %% When looking for the corresponding INVITE transaction, we have to change the
+    %% CSeq method of this header to INVITE, in case we received it from a RFC2543 client
+    %% (RFC2543 backwards-compatible transaction matching includes the whole CSeq, this is
+    %% probably an error in RFC3261 #9.2 that refers to #17.2.3 which does not say that
+    %% CANCEL matches a transaction even though the CSeq method differs)
+    IHeader = keylist:set("CSeq", [sipheader:cseq_print({CSeqNum, "INVITE"})], Header),
+    Invite = Request#request{method = "INVITE",
+			     header = IHeader
+			    },
+    case get_server_transaction_id(Invite) of
 	error ->
 	    logger:log(error, "Transaction state list: Could not get server transaction for request"),
 	    error;
 	Id ->
-	    case get_elem(server, Id) of
-		none when Request#request.method == "ACK" ->
+	    case get_elem(Tables, server, Id) of
+		none ->
+		    none;
+		Res when is_record(Res, transactionstate) ->
+		    Res
+	    end
+    end;
+get_server_transaction_using_request(Tables, #request{method = "ACK"} = Request) when is_record(Tables, tables) ->
+    case get_server_transaction_id(Request) of
+	error ->
+	    logger:log(error, "Transaction state list: Could not get server transaction for request"),
+	    error;
+	is_2543_ack ->
+	    get_server_transaction_ack_2543(Tables, Request);
+	Id ->
+	    case get_elem(Tables, server, Id) of
+		none ->
 		    %% If the UAC is 2543 compliant, but there is a 3261 compliant proxy between UAC and us,
 		    %% the 3261 proxy will possibly generate another branch for the ACK than the INVITE
 		    %% because the ACK might have a To-tag. If this happens, we must use 2543 methods to find
@@ -171,7 +234,18 @@ get_server_transaction_using_request(Request) when is_record(Request, request) -
 		    %%
 		    logger:log(debug, "Transaction state list: Found no matching server "
 			       "transaction for ACK using RFC3261 methods, trying RFC2543 too"),
-		    get_server_transaction_ack_2543(Request);
+		    get_server_transaction_ack_2543(Tables, Request);
+		Res when is_record(Res, transactionstate) ->
+		    Res
+	    end
+    end;
+get_server_transaction_using_request(Tables, Request) when is_record(Tables, tables), is_record(Request, request) ->
+    case get_server_transaction_id(Request) of
+	error ->
+	    logger:log(error, "Transaction state list: Could not get server transaction for request"),
+	    error;
+	Id ->
+	    case get_elem(Tables, server, Id) of
 		none ->
 		    none;
 		Res when is_record(Res, transactionstate) ->
@@ -180,11 +254,12 @@ get_server_transaction_using_request(Request) when is_record(Request, request) -
     end.
 
 %%--------------------------------------------------------------------
-%% @spec    (Request) ->
+%% @spec    (Tables, Request) ->
 %%            Entry |
 %%            error |
 %%            none
 %%
+%%            Tables  = #tables{}
 %%            Request = #request{}
 %%
 %%            Entry = #transactionstate{}
@@ -195,16 +270,16 @@ get_server_transaction_using_request(Request) when is_record(Request, request) -
 %%          using the painful old RFC2543 backwards compatible code.
 %% @end
 %%--------------------------------------------------------------------
-get_server_transaction_ack_2543(Request) when is_record(Request, request) ->
+get_server_transaction_ack_2543(Tables, Request) when is_record(Request, request) ->
     %% ACK requests are matched to transactions differently if they are not received from
     %% an RFC3261 compliant device, see RFC3261 17.2.3
-    case sipheader:get_server_transaction_ack_id_2543(Request) of
+    case get_server_transaction_ack_id_2543(Request) of
 	error ->
 	    logger:log(error, "Transaction state list: Could not get server transaction RFC2543 ack-id for request"),
 	    error;
 	Id ->
 	    ToTag = sipheader:get_tag(keylist:fetch('to', Request#request.header)),
-	    case get_elem_ackid(Id, ToTag) of
+	    case get_elem_ackid(Tables, Id, ToTag) of
 		none ->
 		    logger:log(debug, "Transaction state list: ACK request does not match any existing transaction"),
 		    %% If this ever happens, this extra debug output will probably be crucial to
@@ -237,8 +312,11 @@ get_server_transaction_ack_2543(Request) when is_record(Request, request) ->
 %% @end
 %%--------------------------------------------------------------------
 get_client_transaction(Method, Branch) ->
+    get_client_transaction(?DEFAULT_TABLES, Method, Branch).
+
+get_client_transaction(Tables, Method, Branch) ->
     Id = {Branch, Method},
-    get_elem(client, Id).
+    get_elem(Tables, client, Id).
 
 %%--------------------------------------------------------------------
 %% @spec    (Pid) ->
@@ -255,7 +333,10 @@ get_client_transaction(Method, Branch) ->
 %% @end
 %%--------------------------------------------------------------------
 get_entrylist_using_pid(Pid) when is_pid(Pid) ->
-    case get_using_pid2(Pid) of
+    get_entrylist_using_pid(?DEFAULT_TABLES, Pid).
+
+get_entrylist_using_pid(Tables, Pid) when is_pid(Pid) ->
+    case get_using_pid2(Tables, Pid) of
 	[] ->
 	    none;
 	L when is_list(L) ->
@@ -280,8 +361,11 @@ get_entrylist_using_pid(Pid) when is_pid(Pid) ->
 %% @end
 %%--------------------------------------------------------------------
 get_elem_using_pid(Pid, TStateList) when is_pid(Pid), is_record(TStateList, transactionstatelist) ->
+    get_elem_using_pid(?DEFAULT_TABLES, Pid, TStateList).
+
+get_elem_using_pid(Tables, Pid, TStateList) when is_pid(Pid), is_record(TStateList, transactionstatelist) ->
     %%case get_using_pid2(Pid, TStateList#transactionstatelist.list, []) of
-    case get_using_pid2(Pid) of
+    case get_using_pid2(Tables, Pid) of
 	[] ->
 	    none;
 	[Elem] when is_record(Elem, transactionstate) ->
@@ -304,9 +388,9 @@ get_elem_using_pid(Pid, TStateList) when is_pid(Pid), is_record(TStateList, tran
 %%          transactionstatelist who have a matching pid.
 %% @end
 %%--------------------------------------------------------------------
-get_using_pid2(Pid) ->
-    RefList = ets:lookup(transactionstate_pid_to_ref, Pid),
-    fetch_using_ref_tuples(RefList).
+get_using_pid2(Tables, Pid)  ->
+    RefList = ets:lookup(Tables#tables.pid_to_ref, Pid),
+    fetch_using_ref_tuples(Tables, RefList).
 
 %%--------------------------------------------------------------------
 %% @spec    (Type, Id) ->
@@ -322,10 +406,10 @@ get_using_pid2(Pid) ->
 %%          has a matching type and id.
 %% @end
 %%--------------------------------------------------------------------
-get_elem(Type, Id) when is_atom(Type); Type == server; Type == client ->
+get_elem(Tables, Type, Id) when Type == server orelse Type == client ->
     TId = {Type, Id},
-    RefList = ets:lookup(transactionstate_typeid_to_ref, TId),
-    case fetch_using_ref_tuples(RefList) of
+    RefList = ets:lookup(Tables#tables.typeid_to_ref, TId),
+    case fetch_using_ref_tuples(Tables, RefList) of
 	[] -> none;
 	[IdMatch] ->
 	    IdMatch
@@ -333,12 +417,13 @@ get_elem(Type, Id) when is_atom(Type); Type == server; Type == client ->
 
 
 %%--------------------------------------------------------------------
-%% @spec    (AckId, ToTag) ->
+%% @spec    (Tables, AckId, ToTag) ->
 %%            Entry |
 %%            none
 %%
-%%            AckId = term()
-%%            ToTag = string() | none
+%%            Tables = #tables{}
+%%            AckId  = term()
+%%            ToTag  = string() | none
 %%
 %%            Entry = #transactionstate{}
 %%
@@ -348,9 +433,9 @@ get_elem(Type, Id) when is_atom(Type); Type == server; Type == client ->
 %%          matching RFC2543 ACK's to non-2xx responses to INVITEs.
 %% @end
 %%--------------------------------------------------------------------
-get_elem_ackid(AckId, ToTag) ->
-    RefList = ets:lookup(transactionstate_ack_to_ref, AckId),
-    AckIdMatches = fetch_using_ref_tuples(RefList),
+get_elem_ackid(Tables, AckId, ToTag) ->
+    RefList = ets:lookup(Tables#tables.ack_to_ref, AckId),
+    AckIdMatches = fetch_using_ref_tuples(Tables, RefList),
     filter_server_totag_matches(ToTag, AckIdMatches).
 
 filter_server_totag_matches(_ToTag, []) ->
@@ -489,9 +574,12 @@ set_result(TState, Value) when is_record(TState, transactionstate), is_list(Valu
 %% @end
 %%--------------------------------------------------------------------
 delete_using_entrylist(EntryList) when is_list(EntryList) ->
-    ok = del_entrys(EntryList),
+    delete_using_entrylist(?DEFAULT_TABLES, EntryList).
+
+delete_using_entrylist(Tables, EntryList) when is_list(EntryList) ->
+    ok = del_entrys(Tables, EntryList),
     NumEntrys = length(EntryList),
-    ets:update_counter(yxa_statistics, {transactionlayer, transactions}, 0 - NumEntrys),
+    ets:update_counter(Tables#tables.statistics, {transactionlayer, transactions}, 0 - NumEntrys),
     {ok, NumEntrys}.
 
 %%--------------------------------------------------------------------
@@ -508,8 +596,11 @@ delete_using_entrylist(EntryList) when is_list(EntryList) ->
 %% @end
 %%--------------------------------------------------------------------
 update_transactionstate(TState) when is_record(TState, transactionstate) ->
+    update_transactionstate(?DEFAULT_TABLES, TState).
+
+update_transactionstate(Tables, TState) when is_record(TState, transactionstate) ->
     Ref = TState#transactionstate.ref,
-    true = ets:insert(transactionstate_ref_to_t, {Ref, TState}),
+    true = ets:insert(Tables#tables.ref_to_t, {Ref, TState}),
     ok.
 
 %%--------------------------------------------------------------------
@@ -523,7 +614,10 @@ update_transactionstate(TState) when is_record(TState, transactionstate) ->
 %% @end
 %%--------------------------------------------------------------------
 get_length() ->
-    ets:info(transactionstate_ref_to_t, size).
+    get_length(?DEFAULT_TABLES).
+
+get_length(Tables) ->
+    ets:info(Tables#tables.ref_to_t, size).
 
 debugfriendly() ->
     %% no list supplied, request full dump
@@ -600,7 +694,7 @@ monitor_format(TList) when is_list(TList) ->
 
 monitor_format2([], Res) ->
     lists:reverse(Res);
-monitor_format2([H|T], Res) when record(H, transactionstate) ->
+monitor_format2([H|T], Res) when is_record(H, transactionstate) ->
     Str =
 	case H#transactionstate.result of
 	    none ->
@@ -617,27 +711,28 @@ monitor_format2([H|T], Res) when record(H, transactionstate) ->
 %%====================================================================
 
 %%--------------------------------------------------------------------
-%% @spec    (Type, Id, AckId, Pid, Desc) ->
+%% @spec    (Tables, Type, Id, AckId, Pid, Desc) ->
 %%            ok               |
 %%            error            |
 %%            {duplicate, Dup}
 %%
-%%            Type  = client | server
-%%            Id    = term()
-%%            AckId = term() | none
-%%            Pid   = pid()
-%%            Desc  = string() ""
+%%            Tables = #tables{}
+%%            Type   = client | server
+%%            Id     = term()
+%%            AckId  = term() | none
+%%            Pid    = pid()
+%%            Desc   = string() ""
 %%
 %%            Dup = #transactionstate{}
 %%
 %% @doc     Add a new transaction state entry to the ets tables.
 %% @end
 %%--------------------------------------------------------------------
-add(Type, Id, AckId, Pid, Desc) when is_pid(Pid), is_atom(Type),
-				     (Type == client orelse Type == server) ->
+add(Tables, Type, Id, AckId, Pid, Desc) when is_pid(Pid), is_atom(Type),
+					     (Type == client orelse Type == server) ->
     Ref = make_ref(),
     TId = {Type, Id},
-    case ets:insert_new(transactionstate_typeid_to_ref, {TId, Ref}) of
+    case ets:insert_new(Tables#tables.typeid_to_ref, {TId, Ref}) of
 	true ->
 	    NewT = #transactionstate{ref = Ref,
 				     type = Type,
@@ -646,17 +741,17 @@ add(Type, Id, AckId, Pid, Desc) when is_pid(Pid), is_atom(Type),
 				     pid = Pid,
 				     expire = util:timestamp() + ?TRANSACTION_EXPIRE,
 	    			     description = Desc},
-	    true = ets_insert_new(transactionstate_ref_to_t, {Ref, NewT}),
-	    true = ets:insert(transactionstate_pid_to_ref, {Pid, Ref}),
+	    true = ets_insert_new(Tables#tables.ref_to_t, {Ref, NewT}),
+	    true = ets:insert(Tables#tables.pid_to_ref, {Pid, Ref}),
 	    case AckId of
 		none -> true;
-		_ -> true = ets_insert_new(transactionstate_ack_to_ref, {AckId, Ref})
+		_ -> true = ets_insert_new(Tables#tables.ack_to_ref, {AckId, Ref})
 	    end,
 	    %% Statistics
-	    ets:update_counter(yxa_statistics, {transactionlayer, transactions}, 1),
+	    ets:update_counter(Tables#tables.statistics, {transactionlayer, transactions}, 1),
 	    ok;
 	false ->
-	    case get_elem(Type, Id) of
+	    case get_elem(Tables, Type, Id) of
 		Dup when is_record(Dup, transactionstate) ->
 		    logger:log(debug, "transactionstatelist: Asked to add transaction (handled by ~p) with duplicate Id ~p, "
 			       "existing entry :~n~p~nReturning {duplicate, ...}",
@@ -686,39 +781,498 @@ ets_insert_new(TName, Data) when is_atom(TName), is_tuple(Data) ->
     end.
 
 %% Fetch the transaction state and then remove all references to it from all our ets tables
-del_entrys([]) ->
+del_entrys(_Tables, []) ->
     ok;
-del_entrys([H|T]) when is_record(H, transactionstate) ->
+del_entrys(Tables, [H|T]) when is_record(H, transactionstate) ->
     Type = H#transactionstate.type,
     Id = H#transactionstate.id,
     TId = {Type, Id},
-    true = ets:delete(transactionstate_typeid_to_ref, TId),
+    true = ets:delete(Tables#tables.typeid_to_ref, TId),
     case H#transactionstate.ack_id of
 	none -> true;
-	AckId -> true = ets:delete(transactionstate_ack_to_ref, AckId)
+	AckId -> true = ets:delete(Tables#tables.ack_to_ref, AckId)
     end,
-    true = ets:delete(transactionstate_pid_to_ref, H#transactionstate.pid),
-    true = ets:delete(transactionstate_ref_to_t, H#transactionstate.ref),
-    del_entrys(T).
+    true = ets:delete(Tables#tables.pid_to_ref, H#transactionstate.pid),
+    true = ets:delete(Tables#tables.ref_to_t, H#transactionstate.ref),
+    del_entrys(Tables, T).
 
-fetch_using_ref_tuples(In) ->
-    fetch_using_ref_tuples2(In, []).
+fetch_using_ref_tuples(Tables, In) ->
+    fetch_using_ref_tuples2(Tables, In, []).
 
-fetch_using_ref_tuples2([], Res) ->
+fetch_using_ref_tuples2(_Tables, [], Res) ->
     Res;
-fetch_using_ref_tuples2([{_, Ref}|T], Res) ->
-    case ets:lookup(transactionstate_ref_to_t, Ref) of
+fetch_using_ref_tuples2(Tables, [{_, Ref}|T], Res) ->
+    case ets:lookup(Tables#tables.ref_to_t, Ref) of
 	[{Ref, Entry}] ->
-	    fetch_using_ref_tuples2(T, [Entry | Res]);
+	    fetch_using_ref_tuples2(Tables, T, [Entry | Res]);
 	_ ->
-	    fetch_using_ref_tuples2(T, Res)
+	    fetch_using_ref_tuples2(Tables, T, Res)
     end.
 
 get_all_entries() ->
+    get_all_entries(?DEFAULT_TABLES).
+
+get_all_entries(Tables) ->
     F = fun(H, Acc) ->
 		case H of
 		    {_Ref, Entry} -> [Entry | Acc];
 		    _ -> Acc
 		end
 	end,
-    lists:foldl(F, [], ets:tab2list(transactionstate_ref_to_t)).
+    lists:foldl(F, [], ets:tab2list(Tables#tables.ref_to_t)).
+
+
+%%--------------------------------------------------------------------
+%% @spec    (Request) ->
+%%            Id
+%%
+%%            Request = #request{}
+%%
+%%            Id = term() | is_2543_ack | error
+%%
+%% @doc     Turn a request into a transaction id, that can be stored
+%%          in our transaction state database together with a
+%%          reference to the process handling this request (server
+%%          transaction handler) if this is a new transaction, or
+%%          looked up in the database to find an existing handler if
+%%          this is a resend of the same request or an ACK to a
+%%          non-2xx response to INVITE. This is specified in RFC3261
+%%          #17.2.3 (Matching Requests to Server Transactions).
+%% @end
+%%--------------------------------------------------------------------
+get_server_transaction_id(Request) ->
+    %% We do a catch around this since it includes much parsing of the
+    %% request, and parsing data received from the network is a fragile thing.
+    case catch guarded_get_server_transaction_id(Request) of
+	{'EXIT', E} ->
+	    logger:log(error, "=ERROR REPORT==== from get_server_transaction_id(~p) :~n~p", [Request, E]),
+	    error;
+	Id ->
+	    Id
+    end.
+
+guarded_get_server_transaction_id(Request) when is_record(Request, request) ->
+    TopVia = sipheader:topvia(Request#request.header),
+    %% XXX the branch is actually a token and should apparently be compared case-insensitively
+    %% http://bugs.sipit.net/show_bug.cgi?id=661
+    %% EXCEPT the z9hG4bK which should be compared with case sensitivity (sic)
+    Branch = sipheader:get_via_branch(TopVia),
+    case Branch of
+	"z9hG4bK" ++ _RestOfBranch ->
+	    M = case Request#request.method of
+		    "ACK" ->
+			%% RFC3261 #17.2.3, bullet #3 - when looking for server
+			%% transaction for ACK, the method of the transaction is INVITE
+			"INVITE";
+		    Other ->
+			Other
+		end,
+	    guarded_get_server_transaction_id_3261(M, TopVia);
+	_ ->
+	    guarded_get_server_transaction_id_2543(Request, TopVia)
+    end.
+
+%%--------------------------------------------------------------------
+%% @spec    (Response) ->
+%%            Id
+%%
+%%            Response = #response{}
+%%
+%%            Id = term() | error
+%%
+%% @doc     When we receive a response, we use this function to get an
+%%          Id which we look up in our transaction state database to
+%%          see if we have a client transaction handler that should
+%%          get this response. This is specified in RFC3261 #17.1.3
+%%          (Matching Responses to Client Transactions).
+%% @end
+%%--------------------------------------------------------------------
+get_client_transaction_id(Response) ->
+    %% We do a catch around this since it includes much parsing of the
+    %% request, and parsing data received from the network is a fragile thing.
+    case catch guarded_get_client_transaction_id(Response) of
+	{'EXIT', E} ->
+	    logger:log(error, "=ERROR REPORT==== from get_client_transaction_id(~p) :~n~p", [Response, E]),
+	    error;
+	Id ->
+	    Id
+    end.
+
+guarded_get_client_transaction_id(Response) when is_record(Response, response) ->
+    Header = Response#response.header,
+    TopVia = sipheader:topvia(Header),
+    Branch = sipheader:get_via_branch(TopVia),
+    {_, CSeqMethod} = sipheader:cseq(Header),
+    {Branch, CSeqMethod}.
+
+%%--------------------------------------------------------------------
+%% @spec    (Request) ->
+%%            Id
+%%
+%%            Request = #request{}
+%%
+%%            Id = term() | error
+%%
+%% @doc     When we receive an ACK that has no RFC3261 Via branch
+%%          parameter, we use this function to get an Id that we then
+%%          look up in our transaction state database to try and find
+%%          an existing server transaction that this ACK should be
+%%          delivered to. This is specified in RFC3261 #17.2.3
+%%          (Matching Requests to Server Transactions). Note : When
+%%          using this function, you have to make sure the To-tag of
+%%          this ACK matches the To-tag of the response you think
+%%          this might be the ACK for!
+%%          Note : RFC3261 #17.2.3 relevant text : The ACK request
+%%          matches a transaction if the Request- URI, From tag,
+%%          Call-ID, CSeq number (not the method), and top Via header
+%%          field match those of the INVITE request which created the
+%%          transaction, and the To tag of the ACK matches the To tag
+%%          of the response sent by the server transaction.
+%%          Note : We are supposed to do the comparison of for
+%%          example, the URI, according to the matching rules for
+%%          URIs but that would require us to do a full table scan
+%%          for every ACK. XXX perhaps we should divide the Id into
+%%          two parts - one that is byte-by-byte and used as table
+%%          index, and another part for elements that require more
+%%          exhaustive matching.
+%% @end
+%%--------------------------------------------------------------------
+get_server_transaction_ack_id_2543(Request) ->
+    case catch guarded_get_server_transaction_ack_id_2543(Request) of
+	{'EXIT', E} ->
+	    logger:log(error, "=ERROR REPORT==== from get_server_transaction_ack_id_2543(~p) :~n~p", [Request, E]),
+	    error;
+	Id ->
+	    Id
+    end.
+
+guarded_get_server_transaction_ack_id_2543(Request) when is_record(Request, request) ->
+    {URI, Header} = {Request#request.uri, Request#request.header},
+    TopVia = remove_branch(sipheader:topvia(Header)),
+    CallID = sipheader:callid(Header),
+    {CSeqNum, _} = sipheader:cseq(Header),
+    FromTag = sipheader:get_tag(keylist:fetch('from', Header)),
+    %% We are supposed to match only on the CSeq number, but the entry we are
+    %% matching against is an INVITE and that INVITE had it's Id generated with
+    %% the full CSeq. Make it possible to match the INVITE with this Id.
+    FakeCSeq = {CSeqNum, "INVITE"},
+    {URI, FromTag, CallID, FakeCSeq, TopVia}.
+
+remove_branch(Via) when is_record(Via, via) ->
+    ParamDict = sipheader:param_to_dict(Via#via.param),
+    NewDict = dict:erase("branch", ParamDict),
+    Via#via{param = sipheader:dict_to_param(NewDict)}.
+
+%%--------------------------------------------------------------------
+%% @spec    (Method, TopVia) ->
+%%            Id
+%%
+%%            Method = list()
+%%            TopVia = #via{}
+%%
+%%            Id = term()
+%%
+%% @doc     Part of guarded_get_server_transaction_id(), called when
+%%          the top Via header is found to contain an RFC3261 branch
+%%          parameter. This is the straight forward case.
+%% @end
+%%--------------------------------------------------------------------
+guarded_get_server_transaction_id_3261(Method, TopVia) when is_list(Method), is_record(TopVia, via) ->
+    Branch = sipheader:get_via_branch_full(TopVia),
+    SentBy = via_sentby(TopVia),
+    {Branch, SentBy, Method}.
+
+%%--------------------------------------------------------------------
+%% @spec    (Request, TopVia) ->
+%%            Id
+%%
+%%            Request = #request{}
+%%            TopVia  = #via{}
+%%
+%%            Id = term() | is_2543_ack
+%%
+%% @doc     Part of guarded_get_server_transaction_id(), called when
+%%          the top Via header does NOT contain an RFC3261 branch
+%%          parameter. Creates an Id based on RFC3261 #17.2.3
+%%          (Matching Requests to Server Transactions). Note : We
+%%          could very well do the 2543 ack-id computation here, but
+%%          since the caller must do the To-tag verification for such
+%%          requests we just return is_2543_ack here to make sure the
+%%          caller does not miss this. Note : RFC3261 #17.2.3 has
+%%          different text for ACK (entirely separate, see previous
+%%          note), INVITE and "all other methods". However, it seems
+%%          to me that the instructions for INVITE and "all other"
+%%          are the same :
+%%          The INVITE request matches a transaction if the
+%%          Request-URI, To tag, From tag, Call-ID, CSeq, and top Via
+%%          header field match those of the INVITE request which
+%%          created the transaction. ... For all other request
+%%          methods, a request is matched to a transaction if the
+%%          Request-URI, To tag, From tag, Call-ID, CSeq (including
+%%          the method), and top Via header field match those of the
+%%          request that created the transaction.
+%%          Therefor, we just have non-ACK below.
+%% @end
+%%--------------------------------------------------------------------
+%%
+%% ACK
+%%
+guarded_get_server_transaction_id_2543(Request, _) when is_record(Request, request), Request#request.method == "ACK" ->
+    is_2543_ack;
+
+%%
+%% non-ACK
+%%
+guarded_get_server_transaction_id_2543(Request, TopVia) when is_record(Request, request), is_record(TopVia, via) ->
+    {URI, Header} = {Request#request.uri, Request#request.header},
+    CallID = sipheader:callid(Header),
+    CSeq = sipheader:cseq(Header),
+    FromTag = sipheader:get_tag(keylist:fetch('from', Header)),
+    ToTag = sipheader:get_tag(keylist:fetch('to', Header)),
+    {URI, ToTag, FromTag, CallID, CSeq, TopVia}.
+
+
+%%--------------------------------------------------------------------
+%% @spec    (Via) ->
+%%            {Host, Port}
+%%
+%%            Via = #via{}
+%%
+%%            Host  = string()
+%%            Port  = integer()
+%%
+%% @doc     Extract sent-by part of a via record()
+%% @end
+%%--------------------------------------------------------------------
+via_sentby(Via) when is_record(Via, via) ->
+    %% Before a request is sent, the client transport MUST insert a value of
+    %% the "sent-by" field into the Via header field.  This field contains
+    %% an IP address or host name, and port.
+    {Via#via.host, Via#via.port}.
+
+
+
+%%====================================================================
+%% Test functions
+%%====================================================================
+
+%%--------------------------------------------------------------------
+%% @spec    () -> ok
+%%
+%% @doc     autotest callback
+%% @hidden
+%% @end
+%%--------------------------------------------------------------------
+-ifdef( YXA_NO_UNITTEST ).
+test() ->
+    {error, "Unit test code disabled at compile time"}.
+
+-else.
+
+test() ->
+    %% test via_sentby(Via)
+    %%--------------------------------------------------------------------
+    autotest:mark(?LINE, "via_sentby/1 - 1"),
+    {"host", 1234} = via_sentby(#via{host="host", port=1234}),
+
+    %% test get_server_transaction_id(Request)
+    %%--------------------------------------------------------------------
+    autotest:mark(?LINE, "get_server_transaction_id/1 - 1.1"),
+    %% get Id for INVITE with RFC3261 branch tag in top Via
+    InviteHeader1 = keylist:from_list([
+				       {"Via",	["SIP/2.0/TLS sip.example.org:5061;branch=z9hG4bK-really-unique"]},
+				       {"From", ["<sip:alice@example.org>;tag=f-abc"]},
+				       {"To",	["<sip:bob@example.org>"]},
+				       {"Call-ID", ["3c26722ce234@192.0.2.111"]},
+				       {"CSeq",	["2 INVITE"]}
+				      ]),
+    Invite1 = #request{method="INVITE", uri=sipurl:parse("sip:alice@example.org"),
+		       header=InviteHeader1, body = <<>>},
+    Invite1Id = get_server_transaction_id(Invite1),
+
+    autotest:mark(?LINE, "get_server_transaction_id/1 - 1.2"),
+    %% check result
+    {"z9hG4bK-really-unique", {"sip.example.org", 5061}, "INVITE"} = Invite1Id,
+
+    autotest:mark(?LINE, "get_server_transaction_id/1 - 2"),
+    %% make an ACK for an imagined 3xx-6xx response with to-tag "t-123"
+    AckInvite1Header_1 = keylist:set("To", ["<sip:bob@example.org>;tag=t-123"], InviteHeader1),
+    AckInvite1Header1  = keylist:set("CSeq", ["2 ACK"], AckInvite1Header_1),
+    AckInvite1 = #request{method="ACK", uri=sipurl:parse("sip:alice@example.org"),
+			  header=AckInvite1Header1, body = <<>>},
+
+    AckInvite1Id = get_server_transaction_id(AckInvite1),
+
+    autotest:mark(?LINE, "get_server_transaction_id/1 - 3"),
+    %% Test that the INVITE id matches the ACK id
+    Invite1Id = AckInvite1Id,
+
+    autotest:mark(?LINE, "get_server_transaction_id/1 - 4.1"),
+    %% get Id for INVITE with RFC2543 branch tag in top Via
+    Invite2543_1Header = keylist:from_list([
+					    {"Via",	["SIP/2.0/TLS sip.example.org:5061;branch=not-really-unique"]},
+					    {"From",	["<sip:alice@example.org>;tag=f-abc"]},
+					    {"To",	["<sip:bob@example.org>"]},
+					    {"Call-ID", ["3c26722ce234@192.0.2.111"]},
+					    {"CSeq",	["2 INVITE"]}
+					   ]),
+    Invite2543_1 = #request{method="INVITE", uri=sipurl:parse("sip:alice@example.org"),
+			    header=Invite2543_1Header, body = <<>>},
+    Invite2543_1Id = get_server_transaction_id(Invite2543_1),
+
+    autotest:mark(?LINE, "get_server_transaction_id/1 - 4.2"),
+    %% check result
+    {#sipurl{proto="sip", user="alice", pass=none, host="example.org", port=none, param_pairs={url_param,[]}},
+     none,
+     "f-abc",
+     "3c26722ce234@192.0.2.111", {"2", "INVITE"},
+     {via, "SIP/2.0/TLS", "sip.example.org", 5061, ["branch=not-really-unique"]}
+    } = Invite2543_1Id,
+
+    autotest:mark(?LINE, "get_server_transaction_id/1 - 5.1"),
+    %% for RFC2543 INVITE, we must also get the ACK-id to match future ACKs with this INVITE
+    Invite2543_1AckId = get_server_transaction_ack_id_2543(Invite2543_1),
+
+    autotest:mark(?LINE, "get_server_transaction_id/1 - 5.2"),
+    %% check result
+    {#sipurl{proto="sip", user="alice", pass=none, host="example.org", port=none, param_pairs={url_param,[]}},
+     "f-abc",
+     "3c26722ce234@192.0.2.111",
+     {"2","INVITE"},
+     {via,"SIP/2.0/TLS","sip.example.org",5061,[]}
+    } = Invite2543_1AckId,
+
+    autotest:mark(?LINE, "get_server_transaction_id/1 - 6"),
+    %% make an ACK for an imagined 3xx-6xx response with to-tag "t-123", check that
+    %% get_server_transaction_id refuses and tells us it is an 2543 ACK
+    AckInvite2543_1Header_1 = keylist:set("To", ["<sip:bob@example.org>;tag=t-123"], Invite2543_1Header),
+    AckInvite2543_1Header   = keylist:set("CSeq", ["2 ACK"], AckInvite2543_1Header_1),
+    AckInvite2543_1 = #request{method="ACK", uri=sipurl:parse("sip:alice@example.org"),
+			       header=AckInvite2543_1Header, body = <<>>},
+
+    is_2543_ack = get_server_transaction_id(AckInvite2543_1),
+
+    autotest:mark(?LINE, "get_server_transaction_id/1 - 7"),
+    %% now get the 2543 ACK id from the ACK
+    AckInvite2543_1Id = get_server_transaction_ack_id_2543(AckInvite2543_1),
+
+    autotest:mark(?LINE, "get_server_transaction_id/1 - 8"),
+    %% check that the 2543 ACK id matches the 2543 INVITE id
+    AckInvite2543_1Id = Invite2543_1AckId,
+
+
+    %% test get_client_transaction_id(Response)
+    %%--------------------------------------------------------------------
+    autotest:mark(?LINE, "get_client_transaction_id/1 - 1"),
+    Response1 = #response{status=699, reason="foo", header=Invite2543_1Header, body = <<>>},
+    {"not-really-unique", "INVITE"} = get_client_transaction_id(Response1),
+
+
+
+
+    %% empty(Tables)
+    %%--------------------------------------------------------------------
+    autotest:mark(?LINE, "empty/1 - 1.0"),
+    %% create a bunch of tables
+    TestTables_in = #tables{ref_to_t      = transactionstate_ref_to_t_TEST,
+			    pid_to_ref    = transactionstate_pid_to_ref_TEST,
+			    ack_to_ref    = transactionstate_ack_to_ref_TEST,
+			    typeid_to_ref = transactionstate_typeid_to_ref_TEST,
+			    statistics    = transactionstate_yxa_statistics_TEST
+			   },
+
+    {ok, TestTSList} = empty(TestTables_in),
+    %% the statistics table is not created by empty/1
+    ets:new(TestTables_in#tables.statistics, [public, set, named_table]),
+
+    TestTables = TestTSList#transactionstatelist.tables,
+
+    autotest:mark(?LINE, "empty/1 - 1.1"),
+    %% check that ets tables were created, and are empty
+    TestTablesList = tl(tuple_to_list(TestTables)),
+    [true = test_check_is_empty_ets_table(TableName) || TableName <- TestTablesList],
+
+    autotest:mark(?LINE, "empty/1 - 1.2"),
+    %% create statistics ets-entrys
+    true = ets:insert_new(TestTables_in#tables.statistics, {{transactionlayer, transactions}, 0}),
+
+    %% add_server_transaction(Request, Pid, Desc)
+    %%--------------------------------------------------------------------
+    autotest:mark(?LINE, "add_server_transaction/4 - 1.0"),
+    Message1Branch = "z9hG4bK-yxa-unittest-add_server_transaction3",
+    MessageCommonHeaders1 =
+	"From: Test <sip:test@example.org;tag=abc>\r\n"
+	"To: Test <sip:test@example.org>\r\n"
+	"Call-Id: unittest-add_server_transaction3@yxa.example.org\r\n"
+	"CSeq: INVITE 1234\r\n",
+
+    Message1 =
+	"INVITE sip:ft@example.org SIP/2.0\r\n"
+	"Via: SIP/2.0/YXA-TEST one.example.org;branch=" ++ Message1Branch ++ "\r\n"
+        ++ MessageCommonHeaders1 ++
+	"\r\n",
+
+    Request1 = sippacket:parse(Message1, none),
+
+    autotest:mark(?LINE, "add_server_transaction/4 - 1.1"),
+    ok = add_server_transaction(TestTables, Request1, self(), "TEST request 1"),
+
+    autotest:mark(?LINE, "add_server_transaction/4 - 2"),
+    %% try to add the same request again, should fail
+    {duplicate, _} = add_server_transaction(TestTables, Request1, self(), "TEST request 1"),
+
+    autotest:mark(?LINE, "get_server_transaction_using_request/2 - 1"),
+    %% try to fetch the transaction
+    #transactionstate{type = server,
+		      id   = {Message1Branch, _TopVia1, "INVITE"}
+		     } = get_server_transaction_using_request(TestTables, Request1),
+
+    
+
+    autotest:mark(?LINE, "get_server_transaction_using_request/2 - 2"),
+    %% now, try finding server transaction using a CANCEL request
+    CancelMessage1 =
+	"CANCEL sip:ft@example.org SIP/2.0\r\n"
+	"Via: SIP/2.0/YXA-TEST one.example.org;branch=" ++ Message1Branch ++ "\r\n"
+	++ MessageCommonHeaders1 ++
+	"\r\n",
+
+    CancelRequest1 = sippacket:parse(CancelMessage1, none),
+
+    #transactionstate{type = server,
+		      id   = {Message1Branch, _TopVia1, "INVITE"}
+		     } = get_server_transaction_using_request(TestTables, CancelRequest1),
+
+    autotest:mark(?LINE, "get_server_transaction_using_request/2 - 3"),
+    %% try the same thing but with the CANCEL being received over another transport
+    CancelMessage2 =
+	"CANCEL sip:ft@example.org SIP/2.0\r\n"
+	"Via: SIP/2.0/YXA-TEST2 one.example.org;branch=" ++ Message1Branch ++ "\r\n"
+	++ MessageCommonHeaders1 ++
+	"\r\n",
+
+    CancelRequest2 = sippacket:parse(CancelMessage2, none),
+
+    #transactionstate{type = server,
+		      id   = {Message1Branch, _TopVia1, "INVITE"}
+		     } = get_server_transaction_using_request(TestTables, CancelRequest2),
+
+    
+
+
+    %% clean up
+    [true = ets:delete(TableName) || TableName <- TestTablesList],
+
+
+    ok.
+
+test_check_is_empty_ets_table(TableName) when is_atom(TableName) ->
+    case catch ets:tab2list(TableName) of
+	[] ->
+	    true;
+	_ ->
+	    Msg = io_lib:format("ETS table ~p is not empty", [TableName]),
+	    {error, lists:flatten(Msg)}
+    end.
+
+-endif.

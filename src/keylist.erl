@@ -276,7 +276,7 @@ set(Name, Valuelist, Keylist) when is_list(Name), is_record(Keylist, keylist) ->
 %% @doc     Copy the elements matching Keys from Keylist.
 %% @end
 %%--------------------------------------------------------------------
-copy(Keylist, Names) when record(Keylist, keylist) ->
+copy(Keylist, Names) when is_record(Keylist, keylist) ->
     Keys = normalize_list(Names),
     KeyElems = Keylist#keylist.list,
     Copies = [E || E <- KeyElems, lists:member(E#keyelem.key, Keys)],
@@ -295,10 +295,7 @@ copy(Keylist, Names) when record(Keylist, keylist) ->
 %% @end
 %%--------------------------------------------------------------------
 map(Func, Keylist) when is_record(Keylist, keylist) ->
-    F = fun(Elem) ->
-		Func(Elem#keyelem.key, Elem#keyelem.name, Elem#keyelem.value)
-	end,
-    lists:map(F, Keylist#keylist.list).
+    [Func(E#keyelem.key, E#keyelem.name, E#keyelem.value) || E <- Keylist#keylist.list].
 
 %%====================================================================
 %% Behaviour functions
