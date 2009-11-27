@@ -65,7 +65,7 @@ DEB_CONFIGURE_EXTRA_FLAGS := \
 		--disable-erlang-version-check \
 		LDFLAGS="-Wl,-z,defs"
 
-DEB_AUTO_UPDATE_ACLOCAL := 1.10
+DEB_AUTO_UPDATE_ACLOCAL := 1.11
 DEB_AUTO_UPDATE_AUTOCONF := ' '
 
 DEB_DESTDIR = $(CURDIR)/debian/tmp/
