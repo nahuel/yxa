@@ -287,12 +287,13 @@ handle_info(timeout, State) ->
 	none ->
 	    ok;
 	{ok, Expired} when is_list(Expired) ->
+	    Pids = [transactionstatelist:extract([pid], TState) || TState <- Expired],
 	    %% Signal all Expired entrys that they are expired
-	    lists:map(fun(#transactionstate{pid = Pid}) when is_pid(Pid) ->
+	    lists:map(fun(Pid) when is_pid(Pid) ->
 			      logger:log(debug, "Transaction layer: Telling transaction with pid ~p that "
 					 "it is expired", [Pid]),
 			      gen_server:cast(Pid, {expired})
-		      end, Expired)
+		      end, Pids)
     end,
     {noreply, State, ?TIMEOUT};
 
@@ -449,7 +450,7 @@ received_new_request(Request, YxaCtx, AppModule) when is_record(Request, request
 %% @end
 %%--------------------------------------------------------------------
 cancel_corresponding_transaction(#request{method = "CANCEL"} = Request, STPid) when is_pid(STPid) ->
-    case get_server_transaction_pid(Request) of
+    case get_server_transaction_pid_to_cancel(Request) of
 	InvitePid when is_pid(InvitePid) ->
 	    logger:log(debug, "Transaction layer: CANCEL matches server transaction handled by ~p", [InvitePid]),
 	    {Status, Reason} =
@@ -496,17 +497,35 @@ cancel_corresponding_transaction(Request, STPid) when is_record(Request, request
 %% @end
 %%--------------------------------------------------------------------
 get_server_transaction_pid(Request) when is_record(Request, request) ->
-    case get_server_transaction(Request) of
-	none ->
-	    none;
-	TState when is_record(TState, transactionstate) ->
-	    case transactionstatelist:extract([pid], TState) of
-		[TPid] when is_pid(TPid) ->
-		    TPid;
-		_ ->
-		    none
-	    end
+    TState = get_server_transaction(Request),
+    get_pid_from_transactionstate(TState).
+
+get_pid_from_transactionstate(none) ->
+    none;
+get_pid_from_transactionstate(TState) ->
+    case transactionstatelist:extract([pid], TState) of
+	[TPid] when is_pid(TPid) ->
+	    TPid;
+	_ ->
+	    none
     end.
+
+%%--------------------------------------------------------------------
+%% @spec    (Request) ->
+%%            Pid |
+%%            none
+%%
+%%            Request = #request{} "a CANCEL request"
+%%
+%%            Pid = pid()
+%%
+%% @doc     Look for the request that we should cancel. Return it's
+%%          pid.
+%% @end
+%%--------------------------------------------------------------------
+get_server_transaction_pid_to_cancel(Request) when is_record(Request, request), Request#request.method == "CANCEL" ->
+    TState = transactionstatelist:get_server_transaction_to_cancel(Request),
+    get_pid_from_transactionstate(TState).
 
 %%--------------------------------------------------------------------
 %% @spec    (Request) ->
@@ -558,18 +577,8 @@ get_client_transaction(Response) when is_record(Response, response) ->
 %% @end
 %%--------------------------------------------------------------------
 get_client_transaction_pid(Response) when is_record(Response, response) ->
-    case get_client_transaction(Response) of
-	none ->
-	    none;
-	TState when is_record(TState, transactionstate) ->
-	    case transactionstatelist:extract([pid], TState) of
-		[TPid] when is_pid(TPid) ->
-		    TPid;
-		_ ->
-		    none
-	    end
-    end.
-
+    TState = get_client_transaction(Response),
+    get_pid_from_transactionstate(TState).
 
 %%--------------------------------------------------------------------
 %%% Interface functions
@@ -958,7 +967,7 @@ store_to_tag(Request, ToTag) when is_record(Request, request), is_list(ToTag) ->
     case get_server_transaction(Request) of
 	none ->
 	    {error, "Transaction not found"};
-	ThisState when is_record(ThisState, transactionstate) ->
+	ThisState ->
 	    NewTState = transactionstatelist:set_response_to_tag(ThisState, ToTag),
 	    ok = transactionstatelist:update_transactionstate(NewTState),
 	    ok
@@ -983,7 +992,7 @@ set_result(Request, Value) when is_record(Request, request), is_list(Value) ->
     case get_server_transaction(Request) of
 	none ->
 	    {error, "Transaction not found"};
-	ThisState when is_record(ThisState, transactionstate) ->
+	ThisState ->
 	    NewTState = transactionstatelist:set_result(ThisState, Value),
 	    ok = transactionstatelist:update_transactionstate(NewTState),
 	    ok
@@ -1009,7 +1018,7 @@ store_appdata(Request, Value) when is_record(Request, request) ->
     case get_server_transaction(Request) of
 	none ->
 	    {error, "Transaction not found"};
-	ThisState when is_record(ThisState, transactionstate) ->
+	ThisState ->
 	    NewTState = transactionstatelist:set_appdata(ThisState, Value),
 	    ok = transactionstatelist:update_transactionstate(NewTState),
 	    ok
