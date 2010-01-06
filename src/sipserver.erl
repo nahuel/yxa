@@ -367,7 +367,7 @@ safe_spawn_child(Module, Function, Arguments) ->
 %%
 %% @doc     In sipserver we do lots of checking in the dark areas of
 %%          transport layer, transaction layer or somewhere in
-%%          between. When we detect unparseable requests for example,
+%%          between. When we detect unparsable requests for example,
 %%          we generate an error response in sipserver but special
 %%          care must be taken so that we do not generate responses
 %%          to malformed ACK's. This function checks that.
@@ -663,10 +663,7 @@ parse_packet2(Packet, Origin) when is_binary(Packet), is_record(Origin, siporigi
 %% @end
 %%--------------------------------------------------------------------
 parse_do_internal_error(Header, Socket, Status, Reason, ExtraHeaders) ->
-    case sipheader:cseq(Header) of
-	{unparseable, CSeqStr} ->
-	    logger:log(error, "Sipserver: Malformed CSeq (~p) in response we were going to send, dropping response",
-		       [CSeqStr]);
+    try sipheader:cseq(Header) of
 	{_Num, "ACK"} ->
 	    %% Empirical evidence says that it is a really bad idea to send responses to ACK
 	    %% (since the response may trigger yet another ACK). Although not very clearly,
@@ -678,6 +675,10 @@ parse_do_internal_error(Header, Socket, Status, Reason, ExtraHeaders) ->
 		       [Status, Reason]);
 	{_Num, _Method} ->
 	    transportlayer:send_result(Header, Socket, <<>>, Status, Reason, ExtraHeaders)
+    catch
+	throw: {yxa_unparsable, cseq, Reason} ->
+	    logger:log(error, "Sipserver: Malformed CSeq in response we were going to send, dropping response : ~p",
+		       [Reason])
     end,
     ok.
 
@@ -689,7 +690,7 @@ parse_do_internal_error(Header, Socket, Status, Reason, ExtraHeaders) ->
 %%
 %% @doc     Do alot of transport/transaction layer checking/work on a
 %%          request or response we have received and previously
-%%          concluded was parseable. For example, do RFC3581 handling
+%%          concluded was parsable. For example, do RFC3581 handling
 %%          of rport parameter on top via, check for loops, check if
 %%          we received a request from a strict router etc.
 %% @end
@@ -740,7 +741,7 @@ process_parsed_packet(Request, Origin) when is_record(Request, request), is_reco
 %%
 %% @doc     Do alot of transport/transaction layer checking/work on a
 %%          request or response we have received and previously
-%%          concluded was parseable. For example, do RFC3581 handling
+%%          concluded was parsable. For example, do RFC3581 handling
 %%          of rport parameter on top via, check for loops, check if
 %%          we received a request from a strict router etc.
 %% @end
@@ -1111,13 +1112,11 @@ route_matches_me(Route) when is_record(Route, contact) ->
 %%
 check_packet(Request, Origin) when is_record(Request, request), is_record(Origin, siporigin) ->
     {Method, Header} = {Request#request.method, Request#request.header},
-    check_supported_uri_scheme(Request#request.uri, Header),
+    true = check_supported_uri_scheme(Request#request.uri, Header),
+    %% from here on, the request is guaranteed to have a parsed URI
     sanity_check_contact(request, "From", Header),
     sanity_check_contact(request, "To", Header),
-    case sipheader:cseq(Header) of
-	{unparseable, CSeqStr} ->
-	    logger:log(error, "INVALID CSeq '~p' in packet from ~s", [CSeqStr, origin2str(Origin)]),
-	    throw({sipparseerror, request, Header, 400, "Invalid CSeq"});
+    try sipheader:cseq(Header) of
 	{CSeqNum, CSeqMethod} ->
 	    case util:isnumeric(CSeqNum) of
 		false ->
@@ -1131,6 +1130,11 @@ check_packet(Request, Origin) when is_record(Request, request), is_record(Origin
 			   " does not match request Method " ++ Method});
 		true -> true
 	    end
+    catch
+	throw:
+	  {yxa_unparsable, cseq, Reason} ->
+	    logger:log(error, "INVALID CSeq in packet from ~s : ~p", [origin2str(Origin), Reason]),
+	    throw({sipparseerror, request, Header, 400, "Invalid CSeq"})
     end,
     case yxa_config:get_env(detect_loops) of
 	{ok, true} ->
@@ -1276,33 +1280,44 @@ extract_loopcookie(Branch, CookieLen) ->
 %% @end
 %%--------------------------------------------------------------------
 make_logstr(Request, Origin) when is_record(Request, request), is_record(Origin, siporigin) ->
-    {Method, URI, Header} = {Request#request.method, Request#request.uri, Request#request.header},
-    {_, FromURI} = sipheader:from(Header),
-    {_, ToURI} = sipheader:to(Header),
-    ClientStr = origin2str(Origin),
+    {Method, Header} = {Request#request.method, Request#request.header},
+    URLstr =
+	case Request#request.uri of
+	    URI when is_record(URI, sipurl) ->
+		sipurl:print(URI);
+	    _ ->
+		"unparsable"
+	end,
+    FromURLstr = make_logstr_get_sipheader(from, Header),
+    ToURLstr   = make_logstr_get_sipheader(to, Header),
+    ClientStr  = origin2str(Origin),
     lists:flatten(io_lib:format("~s ~s [client=~s, from=<~s>, to=<~s>]",
-				[Method, sipurl:print(URI), ClientStr, url2str(FromURI), url2str(ToURI)]));
+				[Method, URLstr, ClientStr, FromURLstr, ToURLstr]));
 make_logstr(Response, Origin) when is_record(Response, response), is_record(Origin, siporigin) ->
     Header = Response#response.header,
-    {_, CSeqMethod} = sipheader:cseq(Header),
-    {_, FromURI} = sipheader:from(Header),
-    {_, ToURI} = sipheader:to(Header),
-    ClientStr = origin2str(Origin),
+    CSeqMethod = make_logstr_get_sipheader(cseq, Header),
+    FromURLstr = make_logstr_get_sipheader(from, Header),
+    ToURLstr   = make_logstr_get_sipheader(to, Header),
+    ClientStr  = origin2str(Origin),
     case keylist:fetch('warning', Header) of
 	[Warning] when is_list(Warning) ->
 	    lists:flatten(io_lib:format("~s [client=~s, from=<~s>, to=<~s>, warning=~p]",
-					[CSeqMethod, ClientStr, url2str(FromURI), url2str(ToURI), Warning]));
+					[CSeqMethod, ClientStr, FromURLstr, ToURLstr, Warning]));
 	_ ->
 	    %% Zero or more than one Warning-headers
 	    lists:flatten(io_lib:format("~s [client=~s, from=<~s>, to=<~s>]",
-					[CSeqMethod, ClientStr, url2str(FromURI), url2str(ToURI)]))
+					[CSeqMethod, ClientStr, FromURLstr, ToURLstr]))
     end.
 
 %% part of make_logstr/2
-url2str(URL) when is_record(URL, sipurl) ->
-    sipurl:print(URL);
-url2str({unparseable, URLstr}) when is_list(URLstr) ->
-    "unparseable".
+make_logstr_get_sipheader(Func, Header) ->
+    try {Func, sipheader:Func(Header)} of
+	{from, {_DisplayName, URI}} -> sipurl:print(URI);
+	{to,   {_DisplayName, URI}} -> sipurl:print(URI);
+	{cseq, {_Seq, Method}} -> Method
+    catch
+	throw: _ -> "unparsable"
+    end.
 
 %%--------------------------------------------------------------------
 %% @spec    (Type, Name, Header) -> term()
@@ -1343,9 +1358,9 @@ sanity_check_uri(_Type, _Desc, URI, _Header) when is_record(URI, sipurl) ->
     ok.
 
 %%--------------------------------------------------------------------
-%% @spec    (URI, Header) -> term()
+%% @spec    (URI, Header) -> true
 %%
-%%            URI    = #sipurl{} | {unparseable, URIstr}
+%%            URI    = #sipurl{} | {yxa_unparsable, uri, {Error :: atom(), URIstr :: string()}}
 %%            Header = #keylist{}
 %%
 %% @throws  {sipparseerror, Type, Header, Status, Reason} 
@@ -1355,18 +1370,12 @@ sanity_check_uri(_Type, _Desc, URI, _Header) when is_record(URI, sipurl) ->
 %%          have failed, and we just format the 416 error response.
 %% @end
 %%--------------------------------------------------------------------
-check_supported_uri_scheme({unparseable, URIstr}, Header) when is_list(URIstr), is_record(Header, keylist) ->
-    case string:chr(URIstr, $:) of
-	0 ->
-	    throw({sipparseerror, request, Header, 416, "Unsupported URI Scheme"});
-	Index ->
-	    case string:to_lower(string:substr(URIstr, 1, Index)) of
-		Proto when Proto == "sip:"; Proto == "sips:" ->
-		    throw({sipparseerror, request, Header, 400, "Unparsable Request-URI"});
-		Scheme ->
-		    throw({sipparseerror, request, Header, 416, "Unsupported URI Scheme (" ++ Scheme ++ ")"})
-	    end
-    end;
+check_supported_uri_scheme({yxa_unparsable, url, {invalid_proto, _URIstr}}, Header) when is_record(Header, keylist) ->
+    throw({sipparseerror, request, Header, 416, "Missing URI Scheme"});
+check_supported_uri_scheme({yxa_unparsable, url, {unknown_proto, _URIstr}}, Header) when is_record(Header, keylist) ->
+    throw({sipparseerror, request, Header, 416, "Unsupported URI Scheme"});
+check_supported_uri_scheme({yxa_unparsable, url, _Reason}, Header) when is_record(Header, keylist) ->
+    throw({sipparseerror, request, Header, 400, "Unparsable Request-URI"});
 check_supported_uri_scheme(URI, Header) when is_record(URI, sipurl), is_record(Header, keylist) ->
     true.
 
@@ -1801,19 +1810,54 @@ test() ->
 
     %% test make_logstr(Request, Origin)
     %%--------------------------------------------------------------------
-    autotest:mark(?LINE, "make_logstr/2 - 1"),
+    autotest:mark(?LINE, "make_logstr/2 - 1.0"),
     %% create records
-    LogStrH1 = keylist:from_list([
-				  {"From",	["<sip:test@it.su.se>;tag=f-123"]},
-				  {"To",	["<sip:test@it.su.se>;tag=t-123"]}
-				 ]),
-    LogStrReq1 = #request{method="INVITE", uri=sipurl:parse("sip:ft@example.org"),
-			  header=LogStrH1, body=EmptyBody},
+    LogStrMsg1 =
+	<<"INVITE sip:test@example.org SIP/2.0\r\n"
+	 "Via: SIP/2.0/TCP one.example.org\r\n"
+	 "From: Test <sip:test@it.su.se>;tag=f-123\r\n"
+	 "To: <sip:test@it.su.se>;tag=f-123\r\n"
+	 "\r\n"
+	 >>,
+    LogStrReq1 = sippacket:parse(LogStrMsg1, none),
 
-    autotest:mark(?LINE, "make_logstr/2 - 2"),
+    autotest:mark(?LINE, "make_logstr/2 - 1.1"),
     %% straight forward
-    LogStrResult1 = "INVITE sip:ft@example.org [client=tcp:192.0.2.123:10, from=<sip:test@it.su.se>, to=<sip:test@it.su.se>]",
+    LogStrResult1 = "INVITE sip:test@example.org [client=tcp:192.0.2.123:10, from=<sip:test@it.su.se>, to=<sip:test@it.su.se>]",
     LogStrResult1 = make_logstr(LogStrReq1, Origin2Str1),
+
+    autotest:mark(?LINE, "make_logstr/2 - 2.0"),
+    %% create records
+    LogStrMsg2 =
+	<<"INVITE <sip:test@example.org> SIP/2.0\r\n"
+	 "Via: SIP/2.0/TCP one.example.org\r\n"
+	 "From: <sip-test-bad:test@it.su.se>;tag=f-123\r\n"
+	 "To: <sip-test-bad:test@it.su.se>;tag=f-123\r\n"
+	 "\r\n"
+	 >>,
+    LogStrReq2 = sippacket:parse(LogStrMsg2, none),
+
+    autotest:mark(?LINE, "make_logstr/2 - 2.1"),
+    %% test request failure cases (bad URLs)
+    LogStrResult2 = "INVITE unparsable [client=tcp:192.0.2.123:10, from=<unparsable>, to=<unparsable>]",
+    LogStrResult2 = make_logstr(LogStrReq2, Origin2Str1),
+
+    autotest:mark(?LINE, "make_logstr/2 - 3.0"),
+    %% create records
+    LogStrMsg3 =
+	<<"SIP/2.0 100 Trying\r\n"
+	 "Via: SIP/2.0/TCP one.example.org\r\n"
+	 "From: <sip-test-bad:test@it.su.se>;tag=f-123\r\n"
+	 "To: <sip-test-bad:test@it.su.se>;tag=f-123\r\n"
+	 "CSeq: FOO\r\n"
+	 "\r\n"
+	 >>,
+    LogStrReq3 = sippacket:parse(LogStrMsg3, none),
+
+    autotest:mark(?LINE, "make_logstr/2 - 3.1"),
+    %% test response failure cases (bad URLs)
+    LogStrResult3 = "unparsable [client=tcp:192.0.2.123:10, from=<unparsable>, to=<unparsable>]",
+    LogStrResult3 = make_logstr(LogStrReq3, Origin2Str1),
 
 
     %% test check_packet(Request, Origin)
@@ -2017,14 +2061,14 @@ test() ->
     true = check_supported_uri_scheme(URISchemeURL1, URISchemeHeader),
 
     autotest:mark(?LINE, "check_supported_uri_scheme/2 - 2"),
-    URISchemeURL2 = sipurl:parse("bogus:ft@example.org"),
-    %% URL was unparseable
-    {sipparseerror, request, URISchemeHeader, 416, "Unsupported URI Scheme (bogus:)"} =
+    URISchemeURL2 = (catch sipurl:parse("bogus:ft@example.org")),
+    %% URL was unparsable
+    {sipparseerror, request, URISchemeHeader, 416, _ReasonStr} =
 	(catch check_supported_uri_scheme(URISchemeURL2, URISchemeHeader)),
 
     autotest:mark(?LINE, "check_supported_uri_scheme/2 - 3"),
-    URISchemeURL3 = sipurl:parse("SiP:ft@454.247.207.112"),
-    %% URL was unparseable, but it wasn't the URI scheme that we could not understand
+    URISchemeURL3 = (catch sipurl:parse("SiP:ft@454.247.207.112")),
+    %% URL was unparsable, but it wasn't the URI scheme that we could not understand
     {sipparseerror, request, URISchemeHeader, 400, "Unparsable Request-URI"} =
 	(catch check_supported_uri_scheme(URISchemeURL3, URISchemeHeader)),
 
