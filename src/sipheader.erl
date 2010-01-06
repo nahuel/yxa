@@ -274,7 +274,7 @@ contact2(Header, Name) when is_record(Header, keylist), is_atom(Name) ->
 %%
 %%            In = #keylist{} | [string()]
 %%
-%%            Reason = unparseable_via | term()
+%%            Reason = unparsable_via | term()
 %%
 %% @throws  {error, Reason} 
 %%
@@ -316,7 +316,7 @@ via2([H | T], Res) when is_list(H) ->
 	    This = #via{proto=Protocol, host=Host, port=Port, param=Parameters},
 	    via2(T, [This | Res]);
 	_ ->
-	    throw({error, unparseable_via})
+	    throw({error, unparsable_via})
     end;
 via2([], Res) ->
     lists:reverse(Res).
@@ -601,12 +601,14 @@ httparg(String) ->
 
 %%--------------------------------------------------------------------
 %% @spec    (In) ->
-%%            {Seq, Method} | {unparseable, String}
+%%            {Seq, Method}
 %%
 %%            In = #keylist{} | [string()]
 %%
-%%            Seq    = integer()
+%%            Seq    = string()
 %%            Method = string()
+%%
+%% @throws  {yxa_unparsable, cseq, {Reason :: atom(), In :: string()}}
 %%
 %% @doc     Parse CSeq: header data.
 %% @end
@@ -620,7 +622,7 @@ cseq([String]) ->
 	    %% XXX return Seq as integer
 	    {Seq, Method};
 	_ ->
-	    {unparseable, String}
+	    throw({yxa_unparsable, cseq, {unable_to_tokenize, String}})
     end.
 
 %%--------------------------------------------------------------------
@@ -1012,33 +1014,28 @@ event_package(Header) when is_record(Header, keylist) ->
 
 %%--------------------------------------------------------------------
 %% @spec    (String) ->
-%%            {Displayname, URI} | {unparseable, String}
+%%            {DisplayName, URI}
 %%
 %%            String = string() "a sip URI string or sip URI inside \"<\" and \">\" quotes, preceded by a displayname"
 %%
-%%            Displayname = none | string()
+%%            DisplayName = none | string()
 %%            URI         = #sipurl{}
 %%
 %% @doc     used to parse the contents in a To, From or Contact header
 %% @end
 %%--------------------------------------------------------------------
 name_header(String) ->
-    Index1 = string:rchr(String, $<),
-    case Index1 of
+    case string:rchr(String, $<) of
 	0 ->
-	    %% No "<", just an URI? XXX Check that it is parseable?
-	    URI = sipurl:parse(String),
-	    {none, URI};
-	_ ->
+	    %% No "<", just an URL?
+	    URL = sipurl:parse(String),
+	    {none, URL};
+	Index1 ->
 	    Index2 = string:rchr(String, $>),
-	    URL = string:substr(String, Index1 + 1, Index2 - Index1 - 1),
-	    case sipurl:parse(URL) of
-		URI when is_record(URI, sipurl) ->
-		    Displayname = parse_displayname(string:substr(String, 1, Index1 - 1)),
-		    {Displayname, URI};
-		E ->
-		    E
-	    end
+	    Str = string:substr(String, Index1 + 1, Index2 - Index1 - 1),
+	    URL = sipurl:parse(Str),
+	    Displayname = parse_displayname(string:substr(String, 1, Index1 - 1)),
+	    {Displayname, URL}
     end.
 
 %% part of name_header/1.
@@ -1291,7 +1288,14 @@ test() ->
 
     autotest:mark(?LINE, "name_header/1 - 5"),
     %% test with URI missing <>
-    {none, {unparseable, "Fredrik sip:ft@example.org"}} = name_header("Fredrik sip:ft@example.org"),
+    try name_header("Fredrik sip:ft@example.org") of
+	_ ->
+	    throw({error, "Test case was supposed to fail!"})
+    catch
+	throw:
+	  {yxa_unparsable, url, {unknown_proto, "Fredrik sip:ft@example.org"}} ->
+	    ok
+    end,
 
     autotest:mark(?LINE, "name_header/1 - 6 (disabled)"),
     %% test with quoted quotes in the display name
@@ -1458,7 +1462,15 @@ test() ->
 
     autotest:mark(?LINE, "cseq/1 - 2"),
     %% test invalid CSeq
-    {unparseable, "INVITE_1"} = cseq( keylist:from_list([{"CSeq", ["INVITE_1"]}]) ),
+    try cseq( keylist:from_list([{"CSeq", ["INVITE_1"]}]) ) of
+	_ ->
+	    throw({error, "Test case was expected to throw exception!"})
+    catch
+	throw:
+	  {yxa_unparsable, cseq, {_Reason, "INVITE_1"}} ->
+	    ok
+    end,
+    
 
 
     %% test cseq_print({Seq, Method})
