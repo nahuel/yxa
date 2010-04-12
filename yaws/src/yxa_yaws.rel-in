@@ -1,0 +1,9 @@
+%% Erlang library versions inserted by 'configure'
+{release, {"YXA embedded Yaws web server","%VERSION%"},
+ {erts, "@ERLANG_ERTS_VER@"},
+ [{kernel,"@ERLANG_LIB_VER_kernel@"},
+  {stdlib,"@ERLANG_LIB_VER_stdlib@"},
+  {yaws, "@ERLANG_LIB_VER_yaws@"},
+  {yxa_yaws, "%VERSION%"}
+ ]
+}.
