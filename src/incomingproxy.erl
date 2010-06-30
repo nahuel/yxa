@@ -16,6 +16,7 @@
 %%% Standard YXA SIP-application callback functions
 %%--------------------------------------------------------------------
 -export([
+	 config_defaults/0,
 	 init/0,
 	 request/2,
 	 response/2,
@@ -29,12 +30,24 @@
 %%--------------------------------------------------------------------
 -include("siprecords.hrl").
 -include("sipsocket.hrl").
+-include("yxa_config.hrl").
 
 
 %%====================================================================
 %% Behaviour functions
 %% Standard YXA SIP-application callback functions
 %%====================================================================
+
+%%--------------------------------------------------------------------
+%% @spec    () -> AppConfig
+%%
+%%            AppConfig = [#cfg_entry{}]
+%%
+%% @doc     Return application defaults.
+%% @end
+%%--------------------------------------------------------------------
+config_defaults() ->
+    ?INCOMINGPROXY_CONFIG_DEFAULTS.
 
 %%--------------------------------------------------------------------
 %% @spec    () -> #yxa_app_init{}
@@ -225,7 +238,7 @@ verify_homedomain_user2(Request, YxaCtx) ->
 		    transactionlayer:send_challenge_request(Request, proxy, false, none),
 		    drop;
 		_ ->
-		    OStr = sipserver:origin2str(YxaCtx#yxa_ctx.origin),
+		    OStr = transportlayer:origin2str(YxaCtx#yxa_ctx.origin),
 		    LogStr = YxaCtx#yxa_ctx.logstr,
 		    Msg = io_lib:format("Request from ~s failed authentication : ~s", [OStr, LogStr]),
 		    event_handler:generic_event(normal, auth, LogTag, Msg),
@@ -380,7 +393,7 @@ route_request(Request, Origin, LogTag) when is_record(Request, request), is_list
 %%            {response, Status, Reason}   |
 %%            {proxy, Location}            |
 %%            {relay, Location}            |
-%%            {forward, Location} |
+%%            {forward, Location}          |
 %%            none
 %%
 %%            Request = #request{}
@@ -426,7 +439,19 @@ request_to_homedomain(Request, Origin, LogTag, Recursing) when is_record(Request
 	    end
     end.
 
-request_homedomain_event(#request{method = Method} = Request, Origin) when Method == "PUBLISH";
+%%--------------------------------------------------------------------
+%% @spec    (Request, Origin, LogTag) ->
+%%            {forward, Location} |
+%%            false
+%%
+%%            Request = #request{}
+%%            Origin  = #siporigin{}
+%%
+%% @doc     Find out where to route a PUBLISH or SUBSCRIBE to one of
+%%          our homedomains.
+%% @end
+%%--------------------------------------------------------------------
+request_homedomain_event(#request{method = Method} = Request, Origin) when Method == "PUBLISH" orelse
 									   Method == "SUBSCRIBE" ->
     case local:incomingproxy_request_homedomain_event(Request, Origin) of
 	undefined ->
