@@ -1,18 +1,30 @@
 -module(testserver).
 
 %% Standard YXA SIP-application exports
--export([init/0,
+-export([config_defaults/0,
+	 init/0,
 	 request/2,
 	 response/2
 	]).
 
 -include("siprecords.hrl").
 -include("sipsocket.hrl").
+-include("yxa_config.hrl").
 
 %%--------------------------------------------------------------------
 %%% Standard YXA SIP-application exported functions
 %%--------------------------------------------------------------------
 
+%%--------------------------------------------------------------------
+%% @spec    () -> AppConfig
+%%
+%%            AppConfig = [#cfg_entry{}]
+%%
+%% @doc     Return application defaults.
+%% @end
+%%--------------------------------------------------------------------
+config_defaults() ->
+    ?TESTSERVER_CONFIG_DEFAULTS.
 
 %%--------------------------------------------------------------------
 %% @spec    () -> term()
@@ -126,14 +138,11 @@ get_user(URI) ->
 regexp_locate_user(_Input, []) ->
     nomatch;
 regexp_locate_user(Input, [{Regexp, Code, Text} | Rest]) ->
-    case regexp:match(Input, Regexp) of
-	{match, _, _} ->
+    case re:run(Input, Regexp, [{capture, none}]) of
+	match ->
 	    {Code, Text};
 	nomatch ->
-	    regexp_locate_user(Input, Rest);
-	{error, Error} ->
-	    logger:log(normal, "Error in regexp ~p: ~p", [Regexp, Error]),
-	    []
+	    regexp_locate_user(Input, Rest)
     end.
 
 

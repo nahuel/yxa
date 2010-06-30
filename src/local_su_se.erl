@@ -100,15 +100,20 @@ format_number_for_remote_party_id(Number, _Header, "sip1.telia.com") ->
     {ok, local:rewrite_potn_to_e164(Number)};
 format_number_for_remote_party_id(Number, _Header, "sip2.telia.com") ->
     {ok, local:rewrite_potn_to_e164(Number)};
-format_number_for_remote_party_id(Number, _Header, _DstHost) ->
-    %% Rewrite number to an internal number if the gateway is not one of Telias
-    case util:regexp_rewrite(Number, ?E164toInternal) of
+format_number_for_remote_party_id(Number, Header, DstHost) ->
+    case re:run(DstHost, "\\.su\\.se$", [{capture, none}]) of
+	match ->
+	    %% Rewrite number to an internal number if the gateway is not one of Telias
+	    case util:regexp_rewrite(Number, ?E164toInternal) of
+		nomatch ->
+		    {ok, Number};
+		Match ->
+		    {ok, Match}
+	    end;
 	nomatch ->
-	    {ok, Number};
-	Match ->
-	    {ok, Match}
+	    %% not su.se gateway (for example unit test), perform default action
+	    lookup:format_number_for_remote_party_id(Number, Header, DstHost)
     end.
-
 
 get_classes_for_user(User) ->
     Res = sipuserdb:get_classes_for_user(User),
@@ -144,15 +149,17 @@ get_classes_for_user_in_domain(Server, User) when is_list(Server), is_list(User)
 
 get_classes_for_user_in_domain2(User, Dn, [{Regexp, ClassL} | T]) when is_list(User), is_list(Dn),
 								       is_list(Regexp), is_list(ClassL) ->
-    case regexp:first_match(Dn, Regexp) of
-	{match, _, _} ->
+    try re:run(Dn, Regexp, [{capture, none}]) of
+	match ->
 	    logger:log(debug, "local: User ~p (dn ~p) matches dn-regexp ~p -> ~p",
 		       [User, Dn, Regexp, ClassL]),
 	    {ok, ClassL};
 	nomatch ->
-	    get_classes_for_user_in_domain2(User, Dn, T);
-	{error, E} ->
-	    logger:log(normal, "Error in local_su_domain_classes regexp ~p: ~p", [Regexp, E]),
+	    get_classes_for_user_in_domain2(User, Dn, T)
+    catch
+	error:
+	  badarg ->
+	    logger:log(normal, "Error in local_su_domain_classes regexp ~p", [Regexp]),
 	    get_classes_for_user_in_domain2(User, Dn, T)
     end;
 get_classes_for_user_in_domain2(User, Dn, []) ->

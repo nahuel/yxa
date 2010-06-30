@@ -14,6 +14,7 @@
 %%% Standard YXA SIP-application callback functions
 %%--------------------------------------------------------------------
 -export([
+	 config_defaults/0,
 	 init/0,
 	 request/2,
 	 response/2,
@@ -38,6 +39,7 @@
 %%--------------------------------------------------------------------
 -include("siprecords.hrl").
 -include("event.hrl").
+-include("yxa_config.hrl").
 
 %%--------------------------------------------------------------------
 %% Macros
@@ -56,6 +58,17 @@ stop() ->
 %% Behaviour functions
 %% Standard YXA SIP-application callback functions
 %%====================================================================
+
+%%--------------------------------------------------------------------
+%% @spec    () -> AppConfig
+%%
+%%            AppConfig = [#cfg_entry{}]
+%%
+%% @doc     Return application defaults.
+%% @end
+%%--------------------------------------------------------------------
+config_defaults() ->
+    ?EVENTSERVER_CONFIG_DEFAULTS.
 
 %%--------------------------------------------------------------------
 %% @spec    () -> #yxa_app_init{}

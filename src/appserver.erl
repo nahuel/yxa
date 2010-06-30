@@ -15,6 +15,7 @@
 %%% Standard YXA SIP-application callback functions
 %%--------------------------------------------------------------------
 -export([
+	 config_defaults/0,
 	 init/0,
 	 request/2,
 	 response/2,
@@ -41,6 +42,7 @@
 -include("sipproxy.hrl").
 -include("siprecords.hrl").
 -include("sipsocket.hrl").
+-include("yxa_config.hrl").
 
 %%--------------------------------------------------------------------
 %% Records
@@ -62,6 +64,17 @@ stop() ->
 %% Behaviour functions
 %% Standard YXA SIP-application callback functions
 %%====================================================================
+
+%%--------------------------------------------------------------------
+%% @spec    () -> AppConfig
+%%
+%%            AppConfig = [#cfg_entry{}]
+%%
+%% @doc     Return application defaults.
+%% @end
+%%--------------------------------------------------------------------
+config_defaults() ->
+    ?APPSERVER_CONFIG_DEFAULTS.
 
 %%--------------------------------------------------------------------
 %% @spec    () -> #yxa_app_init{}
