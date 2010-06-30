@@ -26,6 +26,8 @@
 	 remove_blacklisting/1,
 	 is_eligible_dst/1,
 
+	 origin2str/1,
+
 	 test/0
 	]).
 
@@ -67,7 +69,7 @@ start_link() ->
 %% @end
 %%--------------------------------------------------------------------
 send_proxy_response(Socket, Response)
-  when is_record(Socket, sipsocket); Socket == none, is_record(Response, response) ->
+  when is_record(Socket, sipsocket) orelse Socket == none, is_record(Response, response) ->
     case sipheader:via(Response#response.header) of
 	[_Self] ->
 	    logger:log(error, "Transport layer: Can't proxy response ~p ~s because it contains just one or less Via "
@@ -88,7 +90,7 @@ send_proxy_response(Socket, Response)
 %%            Socket        = #sipsocket{} | none "socket to use for sending this request"
 %%            Request       = #request{}
 %%            Dst           = #sipdst{}
-%%            ViaParameters = [{Key, Value}]
+%%            ViaParameters = [string()]  "list of strings like foo=bar"y
 %%
 %%            Reason     = timeout | string() | term()
 %%            SipSocket  = #sipsocket{} "the socket used"
@@ -102,7 +104,8 @@ send_proxy_response(Socket, Response)
 %% @end
 %%--------------------------------------------------------------------
 send_proxy_request(Socket, Request, Dst, ViaParameters)
-  when is_record(Socket, sipsocket); Socket == none, is_record(Request, request), is_record(Dst, sipdst) ->
+  when is_record(Socket, sipsocket) orelse Socket == none, is_record(Request, request), is_record(Dst, sipdst),
+       is_list(ViaParameters) ->
     #sipdst{addr  = IP,
 	    port  = Port,
 	    proto = Proto
@@ -477,6 +480,22 @@ is_eligible_dst(Dst) when is_record(Dst, sipdst) ->
 	false ->
 	    true
     end.
+
+%%--------------------------------------------------------------------
+%% @spec    (Origin) ->
+%%            OriginStr
+%%
+%%            Origin  = #siporigin{}
+%%            Default = term()
+%%
+%%            OriginStr = string()
+%%
+%% @doc     Turn a siporigin record into a string.
+%% @end
+%%--------------------------------------------------------------------
+origin2str(Origin) when is_record(Origin, siporigin) ->
+    lists:concat([Origin#siporigin.proto, ":", Origin#siporigin.addr, ":", Origin#siporigin.port]).
+
 
 %%====================================================================
 %% Internal functions
@@ -914,6 +933,14 @@ test() ->
     {error, "Failed getting a socket"} = get_good_socket(none, GGSocket_Dst1),
     %% clean up
     autotest_util:clear_unit_test_result(?MODULE, {sipsocket_test, get_socket}),
+
+    %% test origin2str(Origin)
+    %%--------------------------------------------------------------------
+    Origin2Str1 = #siporigin{proto=tcp, addr="192.0.2.123", port=10},
+
+    autotest:mark(?LINE, "origin2str/1 - 1"),
+    %% straight forward
+    "tcp:192.0.2.123:10" = origin2str(Origin2Str1),
 
     ok.
 

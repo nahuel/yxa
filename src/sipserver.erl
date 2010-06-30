@@ -19,10 +19,6 @@
 	 restart/0,
 	 process/2,
 
-	 %% XXX should move these to some utility module
-	 safe_spawn/3,
-	 origin2str/1,
-
 	 test/0
 	]).
 
@@ -133,13 +129,13 @@ restart() ->
 
 %%--------------------------------------------------------------------
 %% @spec    (Tables) ->
-%%            ok 
+%%            ok
 %%
 %%            Tables = [atom()] "names of Mnesia tables needed by this YXA application."
 %%
 %%            DescriptiveAtom = atom() "reason converted to atom since atoms are displayed best when an application fails to start"
 %%
-%% @throws  DescriptiveAtom 
+%% @throws  DescriptiveAtom
 %%
 %% @doc     Initiate Mnesia on this node. If there are no remote
 %%          mnesia-tables, we conclude that we are a mnesia master
@@ -234,13 +230,13 @@ get_remote_tables([], Res) ->
 
 %%--------------------------------------------------------------------
 %% @spec    (Tables) ->
-%%            ok 
+%%            ok
 %%
 %%            Tables = [atom()] "list of table names"
 %%
 %%            DescriptiveAtom = atom() "reason converted to atom since atoms are displayed best when an application fails to start"
 %%
-%% @throws  DescriptiveAtom 
+%% @throws  DescriptiveAtom
 %%
 %% @doc     Make sure the tables listed in Tables exist, otherwise
 %%          halt the Erlang runtime system.
@@ -263,14 +259,14 @@ check_for_tables([]) ->
 
 %%--------------------------------------------------------------------
 %% @spec    (Descr, Tables) ->
-%%            ok 
+%%            ok
 %%
 %%            Descr  = string() "\"local\" or \"remote\""
 %%            Tables = [atom()] "names of local/remote Mnesia tables needed by this YXA application."
 %%
 %%            DescriptiveAtom = atom() "reason converted to atom since atoms are displayed best when an application fails to start"
 %%
-%% @throws  DescriptiveAtom 
+%% @throws  DescriptiveAtom
 %%
 %% @doc     Do mnesia:wait_for_tables() for RemoteTables, with a
 %%          timeout since Mnesia doesn't always start correctly due
@@ -315,42 +311,6 @@ init_statistics() ->
     ets:new(yxa_statistics, [public, set, named_table]),
     true = ets:insert(yxa_statistics, {starttime, util:timestamp()}),
     ok.
-
-%%--------------------------------------------------------------------
-%% @spec    (Module, Function, Arguments) ->
-%%            Pid
-%%
-%%            Module    = atom()
-%%            Function  = atom()
-%%            Arguments = list()
-%%
-%%            Pid = pid() "spawned process pid"
-%%
-%% @doc     Run Module:Function(Arguments), in a separate process. Log
-%%          errors, but otherwise just ignore them. Relies on Erlang
-%%          process links elsewhere to 'fix' errors.
-%% @end
-%%--------------------------------------------------------------------
-safe_spawn(Module, Function, Arguments) ->
-    proc_lib:spawn(fun() -> safe_spawn_child(Module, Function, Arguments) end).
-
-safe_spawn_child(Module, Function, Arguments) ->
-    try apply(Module, Function, Arguments) of
-	Res -> Res
-    catch
-	exit: E ->
-	    logger:log(error, "=ERROR REPORT==== from ~p:~p :~n~p", [Module, Function, E]),
-	    erlang:exit(E);
-	throw:
-	  {siperror, Status, Reason} ->
-	    logger:log(error, "Spawned function ~p:~p generated a SIP-error (ignoring) : ~p ~s",
-		       [Module, Function, Status, Reason]),
-	    throw({siperror, Status, Reason});
-	  {siperror, Status, Reason, _} ->
-	    logger:log(error, "Spawned function ~p:~p generated a SIP-error (ignoring) : ~p ~s",
-		       [Module, Function, Status, Reason]),
-	    throw({siperror, Status, Reason})
-    end.
 
 %%--------------------------------------------------------------------
 %% @spec    (Request, Socket, Status, Reason, ExtraHeaders) ->
@@ -557,7 +517,7 @@ my_apply(AppModule, Response, YxaCtx) when is_atom(AppModule), is_record(Respons
 parse_packet(Packet, Origin) when is_record(Origin, siporigin) ->
     Socket = Origin#siporigin.sipsocket,
     case parse_packet2(Packet, Origin) of
-	{ok, Parsed} when is_record(Parsed, request); is_record(Parsed, response) ->
+	{ok, Parsed} when is_record(Parsed, request) orelse is_record(Parsed, response) ->
 	    %% Ok, we have done the elementary parsing of the request/response. Now check it
 	    %% for bad things, like loops, wrong IP in top Via (for responses) etc. etc.
 	    %%
@@ -577,27 +537,27 @@ parse_packet(Packet, Origin) when is_record(Origin, siporigin) ->
 		throw:
 		  {sipparseerror, request, Header, Status, Reason} ->
 		    logger:log(error, "INVALID request [client=~s]: -> ~p ~s",
-			       [origin2str(Origin), Status, Reason]),
+			       [transportlayer:origin2str(Origin), Status, Reason]),
 		    parse_do_internal_error(Header, Socket, Status, Reason, []);
 		  {sipparseerror, request, Header, Status, Reason, ExtraHeaders} ->
 		    logger:log(error, "INVALID request [client=~s]: -> ~p ~s",
-			       [origin2str(Origin), Status, Reason]),
+			       [transportlayer:origin2str(Origin), Status, Reason]),
 		    parse_do_internal_error(Header, Socket, Status, Reason, ExtraHeaders);
 		  {sipparseerror, response, _Header, Status, Reason} ->
 		    logger:log(error, "INVALID response [client=~s] -> '~p ~s' (dropping)",
-			       [origin2str(Origin), Status, Reason]),
+			       [transportlayer:origin2str(Origin), Status, Reason]),
 		    false;
 		  {sipparseerror, response, _Header, Status, Reason, _ExtraHeaders} ->
 		    logger:log(error, "INVALID response [client=~s] -> '~p ~s' (dropping)",
-			       [origin2str(Origin), Status, Reason]),
+			       [transportlayer:origin2str(Origin), Status, Reason]),
 		    false;
 		  {siperror, Status, Reason} ->
 		    logger:log(error, "INVALID packet [client=~s] -> '~p ~s', CAN'T SEND RESPONSE",
-			       [origin2str(Origin), Status, Reason]),
+			       [transportlayer:origin2str(Origin), Status, Reason]),
 		    false;
 		  {siperror, Status, Reason, _ExtraHeaders} ->
 		    logger:log(error, "INVALID packet [client=~s] -> '~p ~s', CAN'T SEND RESPONSE",
-			       [origin2str(Origin), Status, Reason]),
+			       [transportlayer:origin2str(Origin), Status, Reason]),
 		    false;
 		error:
 		  E ->
@@ -621,12 +581,13 @@ parse_packet2(Packet, Origin) when is_binary(Packet), is_record(Origin, siporigi
     try sippacket:parse(Packet, Origin) of
 	keepalive ->
 	    ignore;
-	Parsed when is_record(Parsed, request); is_record(Parsed, response) ->
+	Parsed when is_record(Parsed, request) orelse is_record(Parsed, response) ->
 	    {ok, Parsed}
     catch
 	exit:
 	  E ->
-	    logger:log(error, "=ERROR REPORT==== from sippacket:parse() [client=~s]~n~p", [origin2str(Origin), E]),
+	    logger:log(error, "=ERROR REPORT==== from sippacket:parse() [client=~s]~n~p",
+		       [transportlayer:origin2str(Origin), E]),
 	    %% awful amount of debug output here, but a parsing crash is serious and it might be
 	    %% needed to track the bug down
 	    logger:log(debug, "CRASHED parsing packet (binary version):~n~p", [Packet]),
@@ -635,15 +596,15 @@ parse_packet2(Packet, Origin) when is_binary(Packet), is_record(Origin, siporigi
 	throw:
 	  {siperror, Status, Reason} ->
 	    logger:log(error, "INVALID packet [client=~s] -> '~p ~s', CAN'T SEND RESPONSE",
-		       [origin2str(Origin), Status, Reason]),
+		       [transportlayer:origin2str(Origin), Status, Reason]),
 	    error;
 	  {siperror, Status, Reason, _ExtraHeaders} ->
 	    logger:log(error, "INVALID packet [client=~s] -> '~p ~s', CAN'T SEND RESPONSE",
-		       [origin2str(Origin), Status, Reason]),
+		       [transportlayer:origin2str(Origin), Status, Reason]),
 	    error;
 	  Error ->
 	    logger:log(error, "INVALID packet [client=~s], probably not SIP-message at all (reason: ~p) ",
-		       [origin2str(Origin), Error]),
+		       [transportlayer:origin2str(Origin), Error]),
 	    error
     end.
 
@@ -775,7 +736,7 @@ process_parsed_packet(Response, Origin) when is_record(Response, response), is_r
 %%--------------------------------------------------------------------
 check_response_via(Origin, none) when is_record(Origin, siporigin) ->
     logger:log(error, "INVALID top-Via in response [client=~s] (no Via found).",
-	       [origin2str(Origin)]),
+	       [transportlayer:origin2str(Origin)]),
     error;
 check_response_via(Origin, TopVia) when is_record(Origin, siporigin), is_record(TopVia, via) ->
     %% Check that top-Via is ours (RFC 3261 18.1.2),
@@ -799,13 +760,16 @@ check_response_via(Origin, TopVia) when is_record(Origin, siporigin), is_record(
 		    %% other end responds over UDP.
 		    logger:log(debug, "Sipserver: Warning: received response [client=~s]"
 			       " matching me, but different protocol ~p (received on: ~p)",
-			       [origin2str(Origin),
+			       [transportlayer:origin2str(Origin),
 				TopVia#via.proto, sipsocket:proto2viastr(Origin#siporigin.proto)]),
 		    ok;
 		false ->
 		    logger:log(error, "INVALID top-Via in response [client=~s]."
 			       " Top-Via (without parameters) (~s) does not match mine (~s). Discarding.",
-			       [origin2str(Origin), sipheader:via_print([TopVia#via{param=[]}]),
+			       [transportlayer:origin2str(Origin),
+				sipheader:via_print([TopVia#via{param = []
+							       }
+						    ]),
 				sipheader:via_print([MyViaNoParam])]),
 		    error
 	    end
@@ -1099,7 +1063,7 @@ route_matches_me(Route) when is_record(Route, contact) ->
 %%            Packet = #request{} | #response{}
 %%            Origin = #siporigin{} "information about where this Packet was received from"
 %%
-%% @throws  {sipparseerror, request, Header, Status, Reason} 
+%% @throws  {sipparseerror, request, Header, Status, Reason}
 %%
 %% @doc     Sanity check To: and From: in a received request/response
 %%          and, if Packet is a request record(), also check sanity
@@ -1133,7 +1097,7 @@ check_packet(Request, Origin) when is_record(Request, request), is_record(Origin
     catch
 	throw:
 	  {yxa_unparsable, cseq, Reason} ->
-	    logger:log(error, "INVALID CSeq in packet from ~s : ~p", [origin2str(Origin), Reason]),
+	    logger:log(error, "INVALID CSeq in packet from ~s : ~p", [transportlayer:origin2str(Origin), Reason]),
 	    throw({sipparseerror, request, Header, 400, "Invalid CSeq"})
     end,
     case yxa_config:get_env(detect_loops) of
@@ -1166,7 +1130,7 @@ check_packet(Response, Origin) when is_record(Response, response), is_record(Ori
 %%            URI    = term() "opaque #(sipurl{})"
 %%            Origin = #siporigin{} "information about where this Packet was received from"
 %%
-%% @throws  {sipparseerror, request, Header, Status, Reason} 
+%% @throws  {sipparseerror, request, Header, Status, Reason}
 %%
 %% @doc     Inspect Header's Via: record(s) to make sure this is not a
 %%          looping request.
@@ -1290,7 +1254,7 @@ make_logstr(Request, Origin) when is_record(Request, request), is_record(Origin,
 	end,
     FromURLstr = make_logstr_get_sipheader(from, Header),
     ToURLstr   = make_logstr_get_sipheader(to, Header),
-    ClientStr  = origin2str(Origin),
+    ClientStr  = transportlayer:origin2str(Origin),
     lists:flatten(io_lib:format("~s ~s [client=~s, from=<~s>, to=<~s>]",
 				[Method, URLstr, ClientStr, FromURLstr, ToURLstr]));
 make_logstr(Response, Origin) when is_record(Response, response), is_record(Origin, siporigin) ->
@@ -1298,7 +1262,7 @@ make_logstr(Response, Origin) when is_record(Response, response), is_record(Orig
     CSeqMethod = make_logstr_get_sipheader(cseq, Header),
     FromURLstr = make_logstr_get_sipheader(from, Header),
     ToURLstr   = make_logstr_get_sipheader(to, Header),
-    ClientStr  = origin2str(Origin),
+    ClientStr  = transportlayer:origin2str(Origin),
     case keylist:fetch('warning', Header) of
 	[Warning] when is_list(Warning) ->
 	    lists:flatten(io_lib:format("~s [client=~s, from=<~s>, to=<~s>, warning=~p]",
@@ -1326,7 +1290,7 @@ make_logstr_get_sipheader(Func, Header) ->
 %%            Name   = string() "\"From\" or \"To\" or similar"
 %%            Header = #keylist{}
 %%
-%% @throws  {sipparseerror, Type, Header, Status, Reason} 
+%% @throws  {sipparseerror, Type, Header, Status, Reason}
 %%
 %% @doc     Check if the header Name (from Header) is parsable.
 %%          Currently we define parsable as parsable by
@@ -1363,7 +1327,7 @@ sanity_check_uri(_Type, _Desc, URI, _Header) when is_record(URI, sipurl) ->
 %%            URI    = #sipurl{} | {yxa_unparsable, uri, {Error :: atom(), URIstr :: string()}}
 %%            Header = #keylist{}
 %%
-%% @throws  {sipparseerror, Type, Header, Status, Reason} 
+%% @throws  {sipparseerror, Type, Header, Status, Reason}
 %%
 %% @doc     Check if we supported the URI scheme of a request. If we
 %%          didn't support the URI scheme, sipurl:parse(...) will
@@ -1378,22 +1342,6 @@ check_supported_uri_scheme({yxa_unparsable, url, _Reason}, Header) when is_recor
     throw({sipparseerror, request, Header, 400, "Unparsable Request-URI"});
 check_supported_uri_scheme(URI, Header) when is_record(URI, sipurl), is_record(Header, keylist) ->
     true.
-
-%%--------------------------------------------------------------------
-%% @spec    (Origin) ->
-%%            OriginStr
-%%
-%%            Origin  = #siporigin{}
-%%            Default = term()
-%%
-%%            OriginStr = string()
-%%
-%% @doc     Turn a siporigin record into a string.
-%% @end
-%%--------------------------------------------------------------------
-origin2str(Origin) when is_record(Origin, siporigin) ->
-    lists:concat([Origin#siporigin.proto, ":", Origin#siporigin.addr, ":", Origin#siporigin.port]).
-
 
 
 %%====================================================================
@@ -1799,15 +1747,6 @@ test() ->
 	(catch check_for_loop(LoopHeader5, LoopURI1, LoopOrigin1)),
 
 
-    %% test origin2str(Origin)
-    %%--------------------------------------------------------------------
-    Origin2Str1 = #siporigin{proto=tcp, addr="192.0.2.123", port=10},
-
-    autotest:mark(?LINE, "origin2str/1 - 1"),
-    %% straight forward
-    "tcp:192.0.2.123:10" = origin2str(Origin2Str1),
-
-
     %% test make_logstr(Request, Origin)
     %%--------------------------------------------------------------------
     autotest:mark(?LINE, "make_logstr/2 - 1.0"),
@@ -1820,11 +1759,15 @@ test() ->
 	 "\r\n"
 	 >>,
     LogStrReq1 = sippacket:parse(LogStrMsg1, none),
+    TestOrigin1 = #siporigin{proto = tcp,
+			     addr  = "192.0.2.123",
+			     port  = 10
+			    },
 
     autotest:mark(?LINE, "make_logstr/2 - 1.1"),
     %% straight forward
     LogStrResult1 = "INVITE sip:test@example.org [client=tcp:192.0.2.123:10, from=<sip:test@it.su.se>, to=<sip:test@it.su.se>]",
-    LogStrResult1 = make_logstr(LogStrReq1, Origin2Str1),
+    LogStrResult1 = make_logstr(LogStrReq1, TestOrigin1),
 
     autotest:mark(?LINE, "make_logstr/2 - 2.0"),
     %% create records
@@ -1840,7 +1783,7 @@ test() ->
     autotest:mark(?LINE, "make_logstr/2 - 2.1"),
     %% test request failure cases (bad URLs)
     LogStrResult2 = "INVITE unparsable [client=tcp:192.0.2.123:10, from=<unparsable>, to=<unparsable>]",
-    LogStrResult2 = make_logstr(LogStrReq2, Origin2Str1),
+    LogStrResult2 = make_logstr(LogStrReq2, TestOrigin1),
 
     autotest:mark(?LINE, "make_logstr/2 - 3.0"),
     %% create records
@@ -1857,7 +1800,7 @@ test() ->
     autotest:mark(?LINE, "make_logstr/2 - 3.1"),
     %% test response failure cases (bad URLs)
     LogStrResult3 = "unparsable [client=tcp:192.0.2.123:10, from=<unparsable>, to=<unparsable>]",
-    LogStrResult3 = make_logstr(LogStrReq3, Origin2Str1),
+    LogStrResult3 = make_logstr(LogStrReq3, TestOrigin1),
 
 
     %% test check_packet(Request, Origin)
@@ -1875,27 +1818,27 @@ test() ->
 
     autotest:mark(?LINE, "check_packet/2 request - 2"),
     %% valid CSeq
-    ok = check_packet(CPacketR1, Origin2Str1),
+    ok = check_packet(CPacketR1, TestOrigin1),
 
     autotest:mark(?LINE, "check_packet/2 request - 3"),
     CPacketH2 = keylist:set("CSeq", ["foo"], CPacketH1),
     CPacketR2 = CPacketR1#request{header=CPacketH2},
     %% completely invalid CSeq
-    {sipparseerror, request, _, 400, "Invalid CSeq"} = (catch check_packet(CPacketR2, Origin2Str1)),
+    {sipparseerror, request, _, 400, "Invalid CSeq"} = (catch check_packet(CPacketR2, TestOrigin1)),
 
     autotest:mark(?LINE, "check_packet/2 request - 4"),
     CPacketH3 = keylist:set("CSeq", ["A INVITE"], CPacketH1),
     CPacketR3 = CPacketR1#request{header=CPacketH3},
     %% non-integer CSeq number
     {sipparseerror, request, _, 400, "CSeq number 'A' is not an integer"} =
-							(catch check_packet(CPacketR3, Origin2Str1)),
+							(catch check_packet(CPacketR3, TestOrigin1)),
 
     autotest:mark(?LINE, "check_packet/2 request - 5"),
     CPacketH4 = keylist:set("CSeq", ["1 NOMATCH"], CPacketH1),
     CPacketR4 = CPacketR1#request{header=CPacketH4},
     %% wrong method in CSeq
     {sipparseerror, request, _, 400, "CSeq Method NOMATCH does not match request Method INVITE"} =
-							 (catch check_packet(CPacketR4, Origin2Str1)),
+							 (catch check_packet(CPacketR4, TestOrigin1)),
 
 
     %% test check_packet(Response, Origin)
@@ -1911,27 +1854,27 @@ test() ->
 
     autotest:mark(?LINE, "check_packet/2 response - 1"),
     %% test valid case
-    ok = check_packet(CPacketRR1, Origin2Str1),
+    ok = check_packet(CPacketRR1, TestOrigin1),
 
     autotest:mark(?LINE, "check_packet/2 response - 2.1"),
     %% test invalid status code #1
     {sipparseerror, response, _, 400, "Response code out of bounds"} =
-	(catch check_packet(CPacketRR1#response{status=99}, Origin2Str1)),
+	(catch check_packet(CPacketRR1#response{status=99}, TestOrigin1)),
 
     autotest:mark(?LINE, "check_packet/2 response - 2.2"),
     %% test invalid status code #2
     {sipparseerror, response, _, 400, "Response code out of bounds"} =
-	(catch check_packet(CPacketRR1#response{status=-1}, Origin2Str1)),
+	(catch check_packet(CPacketRR1#response{status=-1}, TestOrigin1)),
 
     autotest:mark(?LINE, "check_packet/2 response - 2.3"),
     %% test invalid status code #3
     {sipparseerror, response, _, 400, "Response code out of bounds"} =
-	(catch check_packet(CPacketRR1#response{status=700}, Origin2Str1)),
+	(catch check_packet(CPacketRR1#response{status=700}, TestOrigin1)),
 
     autotest:mark(?LINE, "check_packet/2 response - 2.4"),
     %% test invalid status code #4
     {sipparseerror, response, _, 400, "Response code out of bounds"} =
-	(catch check_packet(CPacketRR1#response{status=4294967301}, Origin2Str1)),
+	(catch check_packet(CPacketRR1#response{status=4294967301}, TestOrigin1)),
 
     WWWURL = "http:/www.stacken.kth.se/projekt/yxa/",
 
@@ -1942,38 +1885,38 @@ test() ->
     %% is to break on To: and From: that we don't understand - so we test this.
     CPacketRH3 = keylist:set("From", [WWWURL], CPacketRH1),
     {sipparseerror, response, CPacketRH3, 400, "Invalid From: header"} =
-	(catch check_packet(CPacketRR1#response{header=CPacketRH3}, Origin2Str1)),
+	(catch check_packet(CPacketRR1#response{header=CPacketRH3}, TestOrigin1)),
 
     autotest:mark(?LINE, "check_packet/2 response - 4"),
     %% Test response with more than one From: header
     CPacketRH4 = keylist:set("From", ["sip:first@example.com", "sip:second@example.com"], CPacketRH1),
     {sipparseerror, response, CPacketRH4, 400, "Missing or invalid From: header"} =
-	(catch check_packet(CPacketRR1#response{header=CPacketRH4}, Origin2Str1)),
+	(catch check_packet(CPacketRR1#response{header=CPacketRH4}, TestOrigin1)),
 
     autotest:mark(?LINE, "check_packet/2 response - 5"),
     %% Test response with no From: header
     CPacketRH5 = keylist:delete("From", CPacketRH1),
     {sipparseerror, response, CPacketRH5, 400, "Missing or invalid From: header"} =
-	(catch check_packet(CPacketRR1#response{header=CPacketRH5}, Origin2Str1)),
+	(catch check_packet(CPacketRR1#response{header=CPacketRH5}, TestOrigin1)),
 
     autotest:mark(?LINE, "check_packet/2 response - 6"),
     %% Test response with totally invalid From: header
     CPacketRH6 = keylist:set("From", ["1"], CPacketRH1),
     {sipparseerror, response, CPacketRH6, 400, "Invalid From: header"} =
-	(catch check_packet(CPacketRR1#response{header=CPacketRH6}, Origin2Str1)),
+	(catch check_packet(CPacketRR1#response{header=CPacketRH6}, TestOrigin1)),
 
     autotest:mark(?LINE, "check_packet/2 response - 7"),
     %% Test response with parsable From: but URL without closing ">"
     CPacketRH7 = keylist:set("From", ["<sip:test@example.org"], CPacketRH1),
     {sipparseerror, response, CPacketRH7, 400, "Invalid From: header"} =
-	(catch check_packet(CPacketRR1#response{header=CPacketRH7}, Origin2Str1)),
+	(catch check_packet(CPacketRR1#response{header=CPacketRH7}, TestOrigin1)),
 
     autotest:mark(?LINE, "check_packet/2 response - 8"),
     %% Test strange To:. I think it is enough to test just one To: - that should suffice
     %% to tell that To: is checked the same way as From: (see tests above).
     CPacketRH8 = keylist:set("To", [WWWURL], CPacketRH1),
     {sipparseerror, response, CPacketRH8, 400, "Invalid To: header"} =
-	(catch check_packet(CPacketRR1#response{header=CPacketRH8}, Origin2Str1)),
+	(catch check_packet(CPacketRR1#response{header=CPacketRH8}, TestOrigin1)),
 
 
     %% test process_parsed_packet(Request, Origin)
@@ -1992,7 +1935,7 @@ test() ->
 
     autotest:mark(?LINE, "process_parsed_packet/2 - 2.1"),
     %% test that received= and rport= is set correctly in top Via
-    {ok, PPPRequest1_res, #yxa_ctx{logstr = LogStrResult1}} = process_parsed_packet(PPPRequest1, Origin2Str1),
+    {ok, PPPRequest1_res, #yxa_ctx{logstr = LogStrResult1}} = process_parsed_packet(PPPRequest1, TestOrigin1),
     autotest:mark(?LINE, "process_parsed_packet/2 - 2.2"),
     %% check result
     ["SIP/2.0/TLS example.org:1234;received=192.0.2.123;rport=10", "SIP/2.0/TCP foo"] =
@@ -2002,7 +1945,7 @@ test() ->
     %% check that process_parsed_packet actually verifys packet using check_packet
     PPPH3 = keylist:set("CSeq", ["bogus-cseq"], PPPH1),
     PPPRequest3 = PPPRequest1#request{header=PPPH3},
-    {sipparseerror, request, _, 400, "Invalid CSeq"} = (catch process_parsed_packet(PPPRequest3, Origin2Str1)),
+    {sipparseerror, request, _, 400, "Invalid CSeq"} = (catch process_parsed_packet(PPPRequest3, TestOrigin1)),
 
     autotest:mark(?LINE, "process_parsed_packet/2 - 4.1"),
     %% This is an URL that we could actually have put in a Record-Route header
@@ -2015,7 +1958,7 @@ test() ->
 	"from=<sip:test@it.su.se>, to=<sip:test@it.su.se>]",
     PPPH4 = keylist:append({"Route", ["<" ++ PPPH4_urlstr ++ ">"]}, PPPH1),
     PPPRequest4 = PPPRequest1#request{uri=PPPURL4, header=PPPH4},
-    {ok, PPPRequest4_res, #yxa_ctx{logstr = PPPH4_logstr}} = process_parsed_packet(PPPRequest4, Origin2Str1),
+    {ok, PPPRequest4_res, #yxa_ctx{logstr = PPPH4_logstr}} = process_parsed_packet(PPPRequest4, TestOrigin1),
     autotest:mark(?LINE, "process_parsed_packet/2 - 4.2"),
     %% check resulting URI
     PPPH4_url = PPPRequest4_res#request.uri,
@@ -2027,7 +1970,7 @@ test() ->
     %% now check that Route is empty if it contained only the real Request-URI
     PPPH5 = keylist:set("Route", ["<" ++ PPPH4_urlstr ++ ">"], PPPH1),
     PPPRequest5 = PPPRequest1#request{uri=PPPURL4, header=PPPH5},
-    {ok, PPPRequest5_res, #yxa_ctx{logstr = PPPH4_logstr}} = process_parsed_packet(PPPRequest5, Origin2Str1),
+    {ok, PPPRequest5_res, #yxa_ctx{logstr = PPPH4_logstr}} = process_parsed_packet(PPPRequest5, TestOrigin1),
     %% check resulting URI
     PPPH4_url = PPPRequest5_res#request.uri,
     %% check resulting Route-header (should be empty)
@@ -2039,7 +1982,7 @@ test() ->
     %% includes remove_route_matching_me()
     PPPH6 = keylist:set("Route", ["<" ++ PPPURL4_str ++ ">"], PPPH1),
     PPPRequest6 = PPPRequest1#request{uri=PPPH4_url, header=PPPH6},
-    {ok, PPPRequest6_res, #yxa_ctx{logstr = PPPH4_logstr}} = process_parsed_packet(PPPRequest6, Origin2Str1),
+    {ok, PPPRequest6_res, #yxa_ctx{logstr = PPPH4_logstr}} = process_parsed_packet(PPPRequest6, TestOrigin1),
     %% check resulting URI, should be the same as input URI
     %% the compiler (R9C-0..R10B-2) barks at this :
     %%     PPPRequest6#request.uri = PPPRequest6_res#request.uri,
@@ -2072,6 +2015,107 @@ test() ->
     {sipparseerror, request, URISchemeHeader, 400, "Unparsable Request-URI"} =
 	(catch check_supported_uri_scheme(URISchemeURL3, URISchemeHeader)),
 
+    ok = test_parse_packet2_loop_detection(),
+
     ok.
+
+test_parse_packet2_loop_detection() ->
+    %% test parse_packet2(Packet, Origin)
+    %%--------------------------------------------------------------------
+    autotest:mark(?LINE, "parse_packet1/2 - Loop detection - 1.0"),
+    %% demonstrate that a spiraling request is not treated as a loop
+    %%
+    %% The spiral is supposed to emulate this scenario :
+    %%
+    %% Regexp1: ^sip:regexp1@homedomain$ sip:regexp2@homedomain
+    %% Regexp2: ^sip:regexp2@homedomain$ sip:user@homedomain
+    %%
+    %% a request sent to regexp1@ should spiral and end up at user@
+
+    HomedomainStr = "example.org",
+
+    Message1 =
+	"MESSAGE sip:regexp1@" ++ HomedomainStr ++ " SIP/2.0\r\n"
+	"Via: SIP/2.0/YXA-TEST one.example.org\r\n"
+	"From: Remote User <sip:test@remote.example.org>;tag=abc\r\n"
+	"To: Test <sip:regexp1@" ++ HomedomainStr ++ ">\r\n"
+	"CSeq: 31000 MESSAGE\r\n"
+	"\r\n",
+
+    Request1 = sippacket:parse(Message1, none),
+    #request{} = Request1,
+
+    MyIP = siphost:myip(),
+    MyPort = sipsocket:get_listenport(yxa_test),
+
+    TestSipSocket = #sipsocket{proto = yxa_test},
+    TestSipDst1 =
+	#sipdst{addr  = MyIP,
+		port  = MyPort,
+		proto = yxa_test,
+		uri   = sipurl:parse("sip:regexp2@" ++ HomedomainStr)
+	       },
+
+    {ok, _SipSocket_Res1, Branch_Res1} =
+	transportlayer:send_proxy_request(TestSipSocket, Request1, TestSipDst1,
+					  ["branch=z9hG4bK-yxa-unittest-unique"]
+					 ),
+
+    {ok, SentMessage1} = test_get_sipsocket_sent_message(TestSipDst1),
+
+    autotest:mark(?LINE, "parse_packet1/2 - Loop detection - 1.1"),
+    %% Now, see if we would detect a loop upon receiving SentRequest1 (we shouldn't,
+    %% since it is a spiraling request (URI in TestSipDst1 was not the same as
+    %% Request-URI in Message1).
+
+    TestOrigin1 =
+	#siporigin{proto = yxa_test,
+		   addr  = MyIP,
+		   port  = MyPort
+		  },
+
+    Request2 = sippacket:parse(SentMessage1, none),
+    #request{} = Request2,
+
+    {ok, Request3, YxaCtx1} = process_parsed_packet(Request2, TestOrigin1),
+
+    autotest:mark(?LINE, "parse_packet1/2 - Loop detection - 1.2"),
+    %% Now, pretend we spiral the request again (now, it is a request with a Via
+    %% header containing one of our loop cookies)
+
+    TestSipDst2 =
+	TestSipDst1#sipdst{uri = sipurl:parse("sip:user@" ++ HomedomainStr)
+			  },
+
+
+    {ok, _SipSocket_Res2, Branch_Res2} =
+	transportlayer:send_proxy_request(TestSipSocket, Request3, TestSipDst2, []),
+
+    {ok, SentMessage2} = test_get_sipsocket_sent_message(TestSipDst2),
+
+    autotest:mark(?LINE, "parse_packet1/2 - Loop detection - 1.3"),
+    %% And finally, check that we don't mistake this still spiraling request
+    %% with a looping one.
+
+    Request4 = sippacket:parse(SentMessage2, none),
+    #request{} = Request4,
+
+    {ok, Request5, YxaCtx2} = process_parsed_packet(Request4, TestOrigin1),
+
+    ok.
+
+
+test_get_sipsocket_sent_message(Dst) when is_record(Dst, sipdst) ->
+    #sipdst{addr = Addr,
+	    port = Port,
+	    proto = Proto
+	   } = Dst,
+    receive
+	{sipsocket_test, send, {Proto, Addr, Port}, Message} ->
+	    {ok, Message}
+    after
+	1000 ->
+	    {error, "Did not find expected sent message in mailbox"}
+    end.
 
 -endif.
