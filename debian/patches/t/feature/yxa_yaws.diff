@@ -1,0 +1,328 @@
+From: Mikael Magnusson <mikma264@gmail.com>
+Subject: [PATCH] t/feature/yxa_yaws
+
+YXA embedded Yaws web server application.
+
+Signed-off-by: Mikael Magnusson <mikma@users.sourceforge.net>
+
+---
+ yaws/src/yxa_yaws.app-in  |   13 ++++
+ yaws/src/yxa_yaws.rel-in  |    6 ++
+ yaws/src/yxa_yaws_app.erl |  134 +++++++++++++++++++++++++++++++++++++++++++++
+ yaws/src/yxa_yaws_ctl.erl |  100 +++++++++++++++++++++++++++++++++
+ yaws/src/yxa_yaws_sup.erl |   28 +++++++++
+ 5 files changed, 281 insertions(+), 0 deletions(-)
+
+diff --git a/yaws/src/yxa_yaws.app-in b/yaws/src/yxa_yaws.app-in
+new file mode 100644
+index 0000000..6dc79f0
+--- /dev/null
++++ b/yaws/src/yxa_yaws.app-in
+@@ -0,0 +1,13 @@
++{application, yxa_yaws,
++ [{description, "YXA Yaws server"},
++  {vsn,"0.0"},
++  {modules, [
++	     yxa_yaws_app,
++	     yxa_yaws_ctl
++	    ]},
++  {registered, [
++	       ]},
++%%  {mod, {yxa_yaws_app, []}},
++  {env, []},
++  {applications,
++        [kernel, stdlib, yaws]}]}.
+diff --git a/yaws/src/yxa_yaws.rel-in b/yaws/src/yxa_yaws.rel-in
+new file mode 100644
+index 0000000..88b5442
+--- /dev/null
++++ b/yaws/src/yxa_yaws.rel-in
+@@ -0,0 +1,6 @@
++%% Erlang OTP R11B-1 library versions
++{release, {"YXA embedded Yaws web server","0.0"}, {erts, "5.2"},
++ [{kernel,"@ERLANG_LIB_VER_kernel@"},
++  {stdlib,"@ERLANG_LIB_VER_stdlib@"},
++  {yaws, "@ERLANG_LIB_VER_yaws@"},
++  {yxa_yaws, "0.0"}]}.
+diff --git a/yaws/src/yxa_yaws_app.erl b/yaws/src/yxa_yaws_app.erl
+new file mode 100644
+index 0000000..f7b2180
+--- /dev/null
++++ b/yaws/src/yxa_yaws_app.erl
+@@ -0,0 +1,134 @@
++%%%-------------------------------------------------------------------
++%%% File    : yxa_yaws_app.erl
++%%% Author  : Mikael Magnusson <mikma@users.sourceforge.net>
++%%% Descrip.: YXA embedded Yaws web server application.
++%%% Created : 1 Aug 2006
++%%%           by Mikael Magnusson <mikma@users.sourceforge.net>
++%%%-------------------------------------------------------------------
++-module(yxa_yaws_app).
++
++-behaviour(application).
++
++%% application callbacks
++-export([start/2, stop/1]).
++
++%% api:s
++-export([start/0, reload/0, stop/0, restart/0, status/0]).
++
++-include_lib("yaws/include/yaws.hrl").
++
++%% application callbacks
++start(normal, []) ->
++    ok = start_yaws(),
++    yxa_yaws_sup:start_link().
++
++stop(_State) ->
++    ok.
++
++%%--------------------------------------------------------------------
++%% Function: start
++%% Descrip.: Start and configure the yaws web server application
++%% Returns : ok
++%%--------------------------------------------------------------------
++start() ->
++    start_yaws().
++
++start_yaws() ->
++    ok = application:set_env(yaws, embedded, true),
++%%    yaws:start(),
++    set_yaws_config().
++
++
++%%--------------------------------------------------------------------
++%% Function: reload
++%% Descrip.: Reload configuration of the yaws web server application
++%% Returns : ok
++%%--------------------------------------------------------------------
++reload() ->
++    set_yaws_config().
++
++
++set_yaws_config() ->
++    {ok, DefaultIncdir} = inc_dir(?MODULE),
++    Includedir = get_env_default(includedir, DefaultIncdir),
++    Docroot = get_env_default(docroot, ?DOCROOT),
++    Tmpdir = get_env_default(tmpdir, ?CACHEDIR),
++    Logdir = get_env_default(logdir, ?LOGDIR),
++    GC = yaws_config:make_default_gconf(false, "yxa"),
++    SC = #sconf{port = 8888,
++		servername = "localhost",
++		listen = {127,0,0,1},
++		docroot = Docroot},
++    MyGC = GC#gconf{logdir=Logdir,
++		    include_dir=GC#gconf.include_dir ++ [Includedir]},
++    ok = yaws_api:setconf(MyGC, [[SC]]).
++
++get_env_default(Param, Default) ->
++    case application:get_env(yxa_yaws, Param) of
++	{ok, Value} ->
++	    Value;
++	undefined ->
++	    Default
++    end.
++
++inc_dir(Module) ->
++    Filename = code:which(Module),
++    Dir = filename:dirname(Filename),
++    IncDir = filename:join(Dir, "include"),
++    case filelib:is_dir(IncDir) of
++	true ->
++	    {ok, IncDir};
++	false ->
++	    {ok, filename:join(filename:dirname(Dir), "include")}
++    end.
++
++
++%%--------------------------------------------------------------------
++%% Function: stop
++%% Descrip.: Stop yaws web server application and terminate system
++%% Returns : void
++%%--------------------------------------------------------------------
++stop() ->
++    %%stop_yaws(),
++    %% Need to stop yxa_yaws_app manually
++    %%application:stop(yxa_yaws_app),
++    init:stop().
++
++%% stop_yaws() ->
++%%    application:stop(yaws).
++
++
++%%--------------------------------------------------------------------
++%% Function: restart()
++%% Descrip.: restart application.
++%% Returns : does not return
++%%--------------------------------------------------------------------
++restart() ->
++    %%    logger:log(normal, "yxa_yaws: restarting"),
++    init:restart().
++
++
++%%--------------------------------------------------------------------
++%% Function: status
++%% Descrip.: Check if yaws is running
++%% Returns : ok | {error, {not_started, yaws}}
++%%--------------------------------------------------------------------
++status() ->
++    check_running(yaws).
++
++
++%%--------------------------------------------------------------------
++%% Function: check_running(AppName)
++%%           AppName = atom(), Application name
++%% Descrip.: Check if an application is running
++%% Returns : ok | {error, {not_started, AppName}}
++%%--------------------------------------------------------------------
++check_running(AppName) ->
++    check_running(AppName, application:which_applications()).
++
++check_running(AppName, [{AppName, _Desc, _Vsn}|_R]) ->
++    ok;
++check_running(AppName, []) ->
++    {error, {not_started, AppName}};
++check_running(_AppName, [_AppName2|R]) ->
++    check_running(_AppName, R).
+diff --git a/yaws/src/yxa_yaws_ctl.erl b/yaws/src/yxa_yaws_ctl.erl
+new file mode 100644
+index 0000000..843094d
+--- /dev/null
++++ b/yaws/src/yxa_yaws_ctl.erl
+@@ -0,0 +1,100 @@
++%%%-------------------------------------------------------------------
++%%% File    : yxa_yaws_ctl.erl
++%%% Author  : Mikael Magnusson <mikma@users.sourceforge.net>
++%%% Descrip.: YXA embedded Yaws web server control
++%%% Created : 1 Aug 2006
++%%%           by Mikael Magnusson <mikma@users.sourceforge.net>
++%%%           based on yxa_ctl.erl
++%%%-------------------------------------------------------------------
++
++-module(yxa_yaws_ctl).
++
++%% api:s
++-export([start/0]).
++
++%%--------------------------------------------------------------------
++%% Macros
++%%--------------------------------------------------------------------
++-define(EXIT_OK, 0).
++-define(EXIT_ERROR, 1).
++-define(EXIT_NODEDOWN, 2).
++-define(EXIT_USAGE, 3).
++
++process(Node, ["start"]) ->
++        case rpc:call(Node, yxa_yaws_app, start, []) of
++	ok ->
++	    io:format("Node ~p started~n", [Node]),
++	    ok;
++	Res ->
++	    Res
++    end;
++
++process(Node, ["reload"]) ->
++    case rpc:call(Node, yxa_yaws_app, reload, []) of
++	ok ->
++	    io:format("Node ~p reloaded~n", [Node]),
++	    ok;
++	Res ->
++	    Res
++    end;
++
++process(Node, ["stop"]) ->
++        case rpc:call(Node, yxa_yaws_app, stop, []) of
++	ok ->
++	    io:format("Node ~p stopped~n", [Node]),
++	    ok;
++	Res ->
++	    Res
++    end;
++
++process(Node, ["restart"]) ->
++    case rpc:call(Node, yxa_yaws_app, restart, []) of
++	ok ->
++	    io:format("Node ~p restarted~n", [Node]),
++	    ok;
++	Res ->
++	    Res
++    end;
++
++process(Node, ["status"]) ->
++        case rpc:call(Node, yxa_yaws_app, status, []) of
++	ok ->
++	    io:format("Node ~p running~n", [Node]),
++	    ok;
++	Res ->
++	    Res
++    end;
++
++process(_Node, [Cmd]) ->
++    io:format("Invalid command ~p~n", [Cmd]),
++    error.
++
++
++start() ->
++    case init:get_plain_arguments() of
++	[NodeStr | Args] ->
++	    Node = list_to_atom(NodeStr),
++	    try process(Node, Args) of
++		ok ->
++		    erlang:halt(?EXIT_OK);
++		error ->
++		    erlang:halt(?EXIT_ERROR);
++		{badrpc, nodedown} ->
++		    io:format("Error: Node ~p not responding~n", [Node]),
++		    erlang:halt(?EXIT_NODEDOWN);
++		Unknown ->
++		    io:format("Yxa_yaws_app RPC returned unknown result : ~p~n", [Unknown]),
++		    erlang:halt(?EXIT_ERROR)
++	    catch
++		error: Y ->
++		    ST = erlang:get_stacktrace(),
++		    io:format("Yxa_yaws_ctl failed : error ~p ~p~n", [Y, ST]),
++		    erlang:halt(?EXIT_ERROR);
++		X: Y ->
++		    io:format("Yxa_yaws_ctl failed : ~p ~p~n", [X, Y]),
++		    erlang:halt(?EXIT_ERROR)
++	    end;
++	_ ->
++	    io:format("Invalid arguments~n"),
++	    erlang:halt(?EXIT_USAGE)
++    end.
+diff --git a/yaws/src/yxa_yaws_sup.erl b/yaws/src/yxa_yaws_sup.erl
+new file mode 100644
+index 0000000..180dc7f
+--- /dev/null
++++ b/yaws/src/yxa_yaws_sup.erl
+@@ -0,0 +1,28 @@
++%%%-------------------------------------------------------------------
++%%% File    : yxa_yaws_sup.erl
++%%% Author  : Mikael Magnusson <mikma@users.sourceforge.net>
++%%% Descrip.: YXA embedded Yaws web server supervisor
++%%% Created : 5 Aug 2006
++%%%           by Mikael Magnusson <mikma@users.sourceforge.net>
++%%%-------------------------------------------------------------------
++-module(yxa_yaws_sup).
++
++-behaviour(supervisor).
++
++%% supervisor callbacks
++-export([init/1]).
++
++%% api:s
++-export([start_link/0]).
++
++-define(SERVER, ?MODULE).
++
++%%--------------------------------------------------------------------
++%% Function: start_link
++%% Description: Starts the supervisor
++%%--------------------------------------------------------------------
++start_link() ->
++    supervisor:start_link({local, ?SERVER}, ?MODULE, []).
++
++init([]) ->
++    {ok, {{one_for_one, 20, 60}, []}}.
+-- 
+tg: (4b19956..) t/feature/yxa_yaws (depends on: upstream)
