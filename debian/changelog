@@ -1,4 +1,4 @@
-yxa (1.0+20100630-1~1) UNRELEASED; urgency=low
+yxa (1.0+git5aeee79-1~1) UNRELEASED; urgency=low
   * Initial release (Closes: #377617)
   * Start applications using -s switch to erl instead of using custom boot
     file, except when running distribution over ssl.
@@ -7,4 +7,4 @@ yxa (1.0+20100630-1~1) UNRELEASED; urgency=low
   * Updated to policy version 3.7.3. No changes required.
   * Fixed lintian warning: debian-rules-ignores-make-clean-error.
 
- -- Mikael Magnusson <mikael@fowley.hem.za.org>  Thu, 01 Jul 2010 00:21:12 +0200
+ -- Mikael Magnusson <mikma@users.sourceforge.net>  Thu, 01 Jul 2010 00:21:12 +0200

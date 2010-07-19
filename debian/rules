@@ -36,15 +36,20 @@ endif
 # 1. Release:               1.0~rc1
 # 2. Snapshot:              0.91+20061205
 # 3. Subversion trunk date: 0.91+20070220svn-1
+# 4. Git revision:          1.0+git5aeee79
 #
 
 DEBVERSION:=$(shell head -n 1 debian/changelog \
                     | sed -e 's/^[^(]*(\([^)]*\)).*/\1/')
 UPVERSION:=$(shell echo $(DEBVERSION) | sed -e 's/^.*://' -e 's/-[0-9.~]*$$//' -e 's/.dfsg$$//')
 
+ifeq (git,$(findstring git,$(UPVERSION)))
+VCSREV := $(shell echo $(DEBVERSION) | sed -e 's/^.*+//' | sed -e 's/-.*//' | sed -e 's/^git//')
+URL := http://github.com/fredrikt/yxa/tarball/$(VCSREV)
+else
 ifeq (+20,$(findstring +20,$(UPVERSION)))
 URL := svn://anonsvn.it.su.se/yxa/trunk
-SVNREV := {$(shell echo $(DEBVERSION) | sed -e 's/^.*+//' | sed -e 's/-.*//')}
+VCSREV := {$(shell echo $(DEBVERSION) | sed -e 's/^.*+//' | sed -e 's/-.*//')}
 else
 ifeq (,$(findstring +2,$(UPVERSION)))
 TARVERSION:=$(shell echo $(UPVERSION) | sed -e 's/~//')
@@ -52,6 +57,7 @@ URL := http://www.stacken.kth.se/project/yxa/download/yxa-$(TARVERSION).tar.gz
 else
 TARVERSION:=$(shell echo $(UPVERSION) | sed -e 's/^.*\+\([0-9]\{4\}\)\([0-9]\{2\}\)\([0-9]\{2\}\)/\1-\2-\3/')
 URL := http://www.stacken.kth.se/project/yxa/download/snapshots/yxa-$(TARVERSION).tar.gz
+endif
 endif
 endif
 
@@ -77,10 +83,10 @@ print-version:
 	@@echo "Debian version:          $(DEBVERSION)"
 	@@echo "Upstream version:        $(UPVERSION)"
 	@@echo "URL:                     $(URL)"
-	@@echo "SVN revision:            $(SVNREV)"
+	@@echo "VCS revision:            $(VCSREV)"
 
 get-orig-source:
 	@@dh_testdir
 	@@[ -d ../tarballs/. ]||mkdir -p ../tarballs
 	@@chmod +x debian/get-orig-source.sh
-	debian/get-orig-source.sh $(UPVERSION) $(URL) $(SVNREV)
+	debian/get-orig-source.sh $(UPVERSION) $(URL) $(VCSREV)
