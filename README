@@ -777,13 +777,13 @@ yxa.config :
  %% Application specific configuration
  %% --------------------------------------------------------------------
  {incomingproxy,	[{appserver,		"appserver.server.example.com"},
-			 
+
 			 {myhostnames,		["incomingproxy.server.example.com", "server.example.com"]},
 			 {homedomain,		["example.com", "example.net", "example.org"],
-			 
+
 			 {enum_domainlist,	["e164.arpa"]}
 			]},
- 
+
  {appserver,		[{listenport,		5070},
 			 {tls_listenport, 	5071}
 	 		]}

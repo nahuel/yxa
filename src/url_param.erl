@@ -45,8 +45,8 @@
 %% Records
 %%--------------------------------------------------------------------
 
-%% a term() wrapped in a record to allow better type checking and 
-%% limiting direct access to it (use access functions supplied by 
+%% a term() wrapped in a record to allow better type checking and
+%% limiting direct access to it (use access functions supplied by
 %% url_param.erl)
 -record(url_param, {
 	  pairs = [] :: [{string(), string() | none}]
@@ -71,7 +71,7 @@
 %%
 %%            Params = [string()] "each string is a \"name=val\" pair or a single \"name\" value and may contain %HH hex escape codes - they are treated as case insensitive"
 %%
-%% @throws  {error, duplicate_key} 
+%% @throws  {error, duplicate_key}
 %%
 %% @doc     convert a uri-parameter list to a normalized (a non case
 %%          sensitive form) form Note : URL parameters may not

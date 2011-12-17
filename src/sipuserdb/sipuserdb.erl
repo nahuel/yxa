@@ -83,14 +83,14 @@ yxa_init() ->
 %%--------------------------------------------------------------------
 %% @spec    (Address) ->
 %%            Username               |
-%%            nomatch                
+%%            nomatch
 %%
 %%            Address = string() "an address in string format."
 %%
 %%            Username = string()
 %%
 %% @throws  {siperror, Status, Reason}               |
-%%            {siperror, Status, Reason, ExtraHeaders} 
+%%            {siperror, Status, Reason, ExtraHeaders}
 %%
 %% @doc     Looks up exactly one user with an Address. Used for
 %%          example in REGISTER. If there are multiple users with
@@ -106,14 +106,14 @@ get_user_with_address(Address) ->
 %%--------------------------------------------------------------------
 %% @spec    (Address) ->
 %%            Users                  |
-%%            nomatch                
+%%            nomatch
 %%
 %%            Address = string() "an address in string format."
 %%
 %%            Users = [string()]
 %%
 %% @throws  {siperror, Status, Reason}               |
-%%            {siperror, Status, Reason, ExtraHeaders} 
+%%            {siperror, Status, Reason, ExtraHeaders}
 %%
 %% @doc     Get all usernames of users matching an address. Used to
 %%          find out to which users we should send a request.
@@ -127,14 +127,14 @@ get_users_for_address_of_record(Address) ->
 %%--------------------------------------------------------------------
 %% @spec    (Addresses) ->
 %%            Users                  |
-%%            nomatch                
+%%            nomatch
 %%
 %%            Addresses = [string()] "addresses in string format"
 %%
 %%            Users = [string()]
 %%
 %% @throws  {siperror, Status, Reason}               |
-%%            {siperror, Status, Reason, ExtraHeaders} 
+%%            {siperror, Status, Reason, ExtraHeaders}
 %%
 %% @doc     Iterate over a list of addresses of record, return all
 %%          users matching one or more of the addresses, without
@@ -149,14 +149,14 @@ get_users_for_addresses_of_record(Addresses) ->
 %%--------------------------------------------------------------------
 %% @spec    (User) ->
 %%            Addresses              |
-%%            nomatch                
+%%            nomatch
 %%
 %%            User = string()
 %%
 %%            Addresses = [string()]
 %%
 %% @throws  {siperror, Status, Reason}               |
-%%            {siperror, Status, Reason, ExtraHeaders} 
+%%            {siperror, Status, Reason, ExtraHeaders}
 %%
 %% @doc     Get all possible addresses of a user. Both configured
 %%          ones, and implicit ones. Used for example to check if a
@@ -179,7 +179,7 @@ get_addresses_for_user(User) ->
 %%            Addresses = [string()]
 %%
 %% @throws  {siperror, Status, Reason}               |
-%%            {siperror, Status, Reason, ExtraHeaders} 
+%%            {siperror, Status, Reason, ExtraHeaders}
 %%
 %% @doc     Iterate over a list of users, return all their addresses
 %%          without duplicates.
@@ -194,14 +194,14 @@ get_addresses_for_users(Users) ->
 %%--------------------------------------------------------------------
 %% @spec    (URL) ->
 %%            Usernames              |
-%%            nomatch                
+%%            nomatch
 %%
 %%            URL = #sipurl{}
 %%
 %%            Usernames = [string()]
 %%
 %% @throws  {siperror, Status, Reason}               |
-%%            {siperror, Status, Reason, ExtraHeaders} 
+%%            {siperror, Status, Reason, ExtraHeaders}
 %%
 %% @doc     Given an URL that is typically the Request-URI of an
 %%          incoming request, make a list of implicit user addresses
@@ -223,14 +223,14 @@ get_users_for_url(URL) ->
 %%--------------------------------------------------------------------
 %% @spec    (Username) ->
 %%            Password               |
-%%            nomatch                
+%%            nomatch
 %%
 %%            Username = string()
 %%
 %%            Password = string()
 %%
 %% @throws  {siperror, Status, Reason}               |
-%%            {siperror, Status, Reason, ExtraHeaders} 
+%%            {siperror, Status, Reason, ExtraHeaders}
 %%
 %% @doc     Returns the password for a user.
 %% @end
@@ -247,14 +247,14 @@ get_password_for_user(User) ->
 %%--------------------------------------------------------------------
 %% @spec    (Username) ->
 %%            Classes                |
-%%            nomatch                
+%%            nomatch
 %%
 %%            Username = string()
 %%
 %%            Classes = [atom()]
 %%
 %% @throws  {siperror, Status, Reason}               |
-%%            {siperror, Status, Reason, ExtraHeaders} 
+%%            {siperror, Status, Reason, ExtraHeaders}
 %%
 %% @doc     Return a list of classes for this Username. Classes are
 %%          'free-form' atoms of types of PSTN destinations this user
@@ -271,14 +271,14 @@ get_classes_for_user(User) ->
 %%--------------------------------------------------------------------
 %% @spec    (User) ->
 %%            Number                 |
-%%            nomatch                
+%%            nomatch
 %%
 %%            User = string()
 %%
 %%            Number = string()
 %%
 %% @throws  {siperror, Status, Reason}               |
-%%            {siperror, Status, Reason, ExtraHeaders} 
+%%            {siperror, Status, Reason, ExtraHeaders}
 %%
 %% @doc     Return the telephone number for a user. We do this by
 %%          fetching all addresses for the user and then examining
@@ -295,14 +295,14 @@ get_telephonenumber_for_user(User) ->
 %%--------------------------------------------------------------------
 %% @spec    (Usernames) ->
 %%            ForwardList            |
-%%            nomatch                
+%%            nomatch
 %%
 %%            Usernames = [string()]
 %%
 %%            ForwardList = [#sipproxy_forward{}]
 %%
 %% @throws  {siperror, Status, Reason}               |
-%%            {siperror, Status, Reason, ExtraHeaders} 
+%%            {siperror, Status, Reason, ExtraHeaders}
 %%
 %% @doc     Return a list of forwards for this user. Forwards are
 %%          currently not in the main YXA CVS repository - Magnus has
@@ -317,14 +317,14 @@ get_forwards_for_users(Users) ->
 %%--------------------------------------------------------------------
 %% @spec    (Username) ->
 %%            ForwardList            |
-%%            nomatch                
+%%            nomatch
 %%
 %%            Username = string()
 %%
 %%            ForwardList = [#sipproxy_forward{}]
 %%
 %% @throws  {siperror, Status, Reason}               |
-%%            {siperror, Status, Reason, ExtraHeaders} 
+%%            {siperror, Status, Reason, ExtraHeaders}
 %%
 %% @doc     Return the forward entry for a user. Forwards are
 %%          currently not in the main YXA CVS repository - Magnus has

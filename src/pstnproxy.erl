@@ -204,7 +204,7 @@ auth_and_tag(Request, YxaCtx) ->
 		undefined
 	end,
     PstnCtx3 = PstnCtx2#pstn_ctx{destination = Destination},
-    
+
     PstnCtx = local:pstnproxy_auth_and_tag(Request, Origin, THandler, PstnCtx3),
 
     case auth_and_tag_verify_from(Request, YxaCtx, PstnCtx) of

@@ -40,8 +40,8 @@
 %%--------------------------------------------------------------------
 %% Records
 %%--------------------------------------------------------------------
-%% a term() wrapped in a record to allow better type checking and 
-%% limiting direct access to it (use access functions supplied by 
+%% a term() wrapped in a record to allow better type checking and
+%% limiting direct access to it (use access functions supplied by
 %% contact_param.erl)
 -record(contact_param, {
 	  pairs
@@ -68,7 +68,7 @@
 %%            Name   = string() "treated as case insensitive"
 %%            Val    = string() | none "treated as case insensitive unless it starts with a quote"
 %%
-%% @throws  {error, duplicate_key} 
+%% @throws  {error, duplicate_key}
 %%
 %% @doc     Convert a contact-parameter list to a normalized (a case
 %%          insensitive form) form. Throws an error if Name component

@@ -270,13 +270,13 @@ contact2(Header, Name) when is_record(Header, keylist), is_atom(Name) ->
 
 %%--------------------------------------------------------------------
 %% @spec    (In) ->
-%%            [#via{}] 
+%%            [#via{}]
 %%
 %%            In = #keylist{} | [string()]
 %%
 %%            Reason = unparsable_via | term()
 %%
-%% @throws  {error, Reason} 
+%% @throws  {error, Reason}
 %%
 %% @doc     Parse Via: header data.
 %% @end
@@ -476,7 +476,7 @@ auth_print(Auth, Stale) when is_tuple(Auth), is_boolean(Stale) ->
 %%            In = string() "one authentication header value"
 %%
 %% @throws  {siperror, Status, Reason}               |
-%%            {siperror, Status, Reason, ExtraHeaders} 
+%%            {siperror, Status, Reason, ExtraHeaders}
 %%
 %% @doc     Parse an authorization header. Note : In is a string like
 %%          "Digest username=\"test\",realm=\"example.org\" ...", a
@@ -659,7 +659,7 @@ callid(Header) when is_record(Header, keylist) ->
 %%            Header = #keylist{}
 %%
 %% @throws  {siperror, Status, Reason}               |
-%%            {siperror, Status, Reason, ExtraHeaders} 
+%%            {siperror, Status, Reason, ExtraHeaders}
 %%
 %% @doc     Build a SIP header we can combine with a first line and
 %%          body to create a message to send out on the wire. We try
@@ -1470,7 +1470,7 @@ test() ->
 	  {yxa_unparsable, cseq, {_Reason, "INVITE_1"}} ->
 	    ok
     end,
-    
+
 
 
     %% test cseq_print({Seq, Method})

@@ -96,7 +96,7 @@ get_user_info(Node, NodeStr) when is_atom(Node), is_list(NodeStr) ->
 	    Users when is_list(Users) ->
 		fmt_users(Users, Node, NodeStr, [])
 	end,
-    {ok, 
+    {ok,
      [{tr, [], [
 		{th, [], "Username"},
 		{th, [], "Address (AoR)"},
@@ -160,7 +160,7 @@ format_attrlist(L) when is_list(L) ->
 		end,
     util:join(lists:map(MakeLists, L), ", ").
 
-    
+
 %%--------------------------------------------------------------------
 %% Function: fmt_user_locations(Locations)
 %%           Locations = list() of siplocationdb_e record()

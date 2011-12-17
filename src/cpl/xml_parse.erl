@@ -95,7 +95,7 @@
 %%                       unreachable_nodes_detected |
 %%                       atom()
 %%
-%% @throws  {error, Error} 
+%% @throws  {error, Error}
 %%
 %% @doc     parse and validate CPLscript - check ranges and that there
 %%          are no cycles, return a graph that models the flow of the
@@ -139,7 +139,7 @@ cpl_script_to_graph(CPLscript) ->
 %%            Vs = [vertex()] "a list of node ids"
 %%            G  = digraph() "the graph for the CPL script"
 %%
-%% @throws  {error, unreachable_nodes_detected} 
+%% @throws  {error, unreachable_nodes_detected}
 %%
 %% @doc     verify that there are no unreachable nodes in the final
 %%          graph. Note : this code only checks if all CPL script
@@ -175,13 +175,13 @@ check_for_unreachable_nodes(Vs, G) ->
 
 %%--------------------------------------------------------------------
 %% @spec    (CPLscript) ->
-%%            #parse_state{} 
+%%            #parse_state{}
 %%
 %%            CPLscript = #xmlElement{} "the toplevel tag of the xml code"
 %%
 %%            Reason = no_incoming_or_outgoing_tag | atom()
 %%
-%% @throws  {error, Reason} 
+%% @throws  {error, Reason}
 %%
 %% @doc     the cpl tag can contain subaction tags and a incoming
 %%          and/or outgoing tag Note : CPL expects tags in order:
@@ -579,13 +579,13 @@ parse_xml(_E, _ParseState) ->
 
 %%--------------------------------------------------------------------
 %% @spec    (Conds) ->
-%%            ok 
+%%            ok
 %%
 %%            Conds = [{Cond, Dest}] "from CondVal in {CondVal, Targets} return value of get_cond/4"
 %%
 %%            Reason = atom()
 %%
-%% @throws  {error, Reason} 
+%% @throws  {error, Reason}
 %%
 %% @doc     the DATE-TIME elements used in CPL (RFC 3880)
 %%          "time-switch" elements support the usage of leap seconds
@@ -680,14 +680,14 @@ no_leap_sec_datetime(DateTime) when is_record(DateTime, date_time) ->
 
 %%--------------------------------------------------------------------
 %% @spec    (TimeZone, Conds) ->
-%%            ok 
+%%            ok
 %%
 %%            TimeZone = term() "currently not supported"
 %%            Conds    = [{Cond, Dest}] "from CondVal in {CondVal, Targets} return value of get_cond/4"
 %%
 %%            Reason = atom()
 %%
-%% @throws  {error, Reason} 
+%% @throws  {error, Reason}
 %%
 %% @doc     examine all "time" elements in a "time-witch" with
 %%          ts_datetime:dtstart_lt_dtend/3, to see if all dtstart -
@@ -743,13 +743,13 @@ get_dtstart_and_dtend(Conds) ->
 
 %%--------------------------------------------------------------------
 %% @spec    (Conds) ->
-%%            ok 
+%%            ok
 %%
 %%            Conds = [{Cond, Dest}] "from CondVal in {CondVal, Targets} return value of get_cond/4"
 %%
 %%            Reason = atom()
 %%
-%% @throws  {error, Reason} 
+%% @throws  {error, Reason}
 %%
 %% @doc     checks that all durations / "dtend - dtstart" periods are
 %%          short enough to never overlap
@@ -776,13 +776,13 @@ validate_duration(Conds) ->
 
 %%--------------------------------------------------------------------
 %% @spec    (InitialConds) ->
-%%            ok 
+%%            ok
 %%
 %%            Conds = [{Cond, Dest}] "from CondVal in {CondVal, Targets} return value of get_cond/4"
 %%
 %%            Reason = atom()
 %%
-%% @throws  {error, Reason} 
+%% @throws  {error, Reason}
 %%
 %% @doc     check that dtstart and date-time values are in floating
 %%          format if byxxx parameters are used in a time tag as
@@ -828,13 +828,13 @@ all_floating(TimeSwitchCond) ->
 
 %%--------------------------------------------------------------------
 %% @spec    (InitialConds) ->
-%%            ok 
+%%            ok
 %%
 %%            Conds = [{Cond, Dest}] "from CondVal in {CondVal, Targets} return value of get_cond/4"
 %%
 %%            Reason = atom()
 %%
-%% @throws  {error, Reason} 
+%% @throws  {error, Reason}
 %%
 %% @doc
 %% @end
@@ -935,7 +935,7 @@ process_targets(ParentSwitchName, Targets, ParseState) ->
 %%--------------------------------------------------------------------
 %% @spec    (ParentTagName, Content) ->
 %%            #xmlElement{} |
-%%            empty               
+%%            empty
 %%
 %%            ParentTagName = atom()
 %%            Content       = ParentContent | SubTagContent
@@ -944,7 +944,7 @@ process_targets(ParentSwitchName, Targets, ParseState) ->
 %%
 %%            Reason = atom()
 %%
-%% @throws  {error, Reason} 
+%% @throws  {error, Reason}
 %%
 %% @doc     return the next node (tag) for a tag type that has a
 %%          single destination - SubTagContent of sub tags of
@@ -1078,7 +1078,7 @@ get_elements(Element, SubElementName) when is_record(Element, xmlElement), is_at
 
 %%--------------------------------------------------------------------
 %% @spec    (ParseState, Ref) ->
-%%            NodeId 
+%%            NodeId
 %%
 %%            ParseState = #parse_state{}
 %%            Ref        = string() "the symbolic name of a subaction used in a ``<sub ref ...>'' tag"
@@ -1086,7 +1086,7 @@ get_elements(Element, SubElementName) when is_record(Element, xmlElement), is_at
 %%            NodeId = term()
 %%            Reason = integer()
 %%
-%% @throws  {error, Reason} 
+%% @throws  {error, Reason}
 %%
 %% @doc     find the node id of the subaction named Ref
 %% @end
@@ -1491,13 +1491,13 @@ get_cond([_Cond | R], SwitchName, ExtraArgs, ParseState, Count, CT) ->
 
 %%--------------------------------------------------------------------
 %% @spec    (Start) ->
-%%            ok 
+%%            ok
 %%
 %%            Start = #date_time{}
 %%
 %%            Reason = atom()
 %%
-%% @throws  {error, Reason} 
+%% @throws  {error, Reason}
 %%
 %% @doc     limit the minimum that dtstart can be set to, this is done
 %%          to guard against limitations in the (OTP) calender module
@@ -1514,13 +1514,13 @@ bound_dtstart(Start) when is_record(Start, date_time)->
 
 %%--------------------------------------------------------------------
 %% @spec    (CountVal) ->
-%%            ok 
+%%            ok
 %%
 %%            CountVal = integer() ">= 1"
 %%
 %%            Reason = atom()
 %%
-%% @throws  {error, Reason} 
+%% @throws  {error, Reason}
 %%
 %% @doc     to limit storage space used by
 %%          #time_switch__cond_x.time_ranges when storing scripts, as
@@ -1673,11 +1673,11 @@ check_prio_value(PrioStr) ->
 
 %%--------------------------------------------------------------------
 %% @spec    (FieldStr) ->
-%%            subject | organization | 'user-agent' | display 
+%%            subject | organization | 'user-agent' | display
 %%
 %%            Reason = atom()
 %%
-%% @throws  {error, Reason} 
+%% @throws  {error, Reason}
 %%
 %% @doc     convert field value used by string-switch in the attribute
 %%          field, to a standard atom() format
@@ -1736,13 +1736,13 @@ next_id(ParseState) ->
 
 %%--------------------------------------------------------------------
 %% @spec    (LogName) ->
-%%            LogName 
+%%            LogName
 %%
 %%            LogName = default | string()
 %%
 %%            Reason = atom()
 %%
-%% @throws  {error, Reason} 
+%% @throws  {error, Reason}
 %%
 %% @doc     check if the name attribute in the log tag, refers to a
 %%          log that can be used by cpl.

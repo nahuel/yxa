@@ -192,7 +192,7 @@ get_user_verified(Header, Method) ->
 %% @spec    (Header, Method) ->
 %%            false                 |
 %%            {stale, User}         |
-%%            {authenticated, User} 
+%%            {authenticated, User}
 %%
 %%            Header = #keylist{}
 %%            Method = string()
@@ -200,7 +200,7 @@ get_user_verified(Header, Method) ->
 %%            User = string() "SIP authentication username"
 %%
 %% @throws  {siperror, Status, Reason}               |
-%%            {siperror, Status, Reason, ExtraHeaders} 
+%%            {siperror, Status, Reason, ExtraHeaders}
 %%
 %% @doc     Check if there is an Proxy-Authorization: header in Header
 %%          and check if it contains a valid response of a challenge
@@ -223,7 +223,7 @@ get_user_verified_proxy(Header, Method) ->
 %% @spec    (Header, Method) ->
 %%            false                 |
 %%            {stale, User}         |
-%%            {authenticated, User} 
+%%            {authenticated, User}
 %%
 %%            Header = #keylist{}
 %%            Method = string()
@@ -231,7 +231,7 @@ get_user_verified_proxy(Header, Method) ->
 %%            User = string() "SIP authentication username"
 %%
 %% @throws  {siperror, Status, Reason}               |
-%%            {siperror, Status, Reason, ExtraHeaders} 
+%%            {siperror, Status, Reason, ExtraHeaders}
 %%
 %% @doc     Check if there is an X-YXA-Peer-Auth: header in Header and
 %%          check if it authorizes this request. Might throw an
@@ -293,7 +293,7 @@ get_user_verified_yxa_peer2(_Header, _Method, [], _Realm, LastRes) ->
 %%            Header    = #keylist{}
 %%
 %% @throws  {siperror, Status, Reason}               |
-%%            {siperror, Status, Reason, ExtraHeaders} 
+%%            {siperror, Status, Reason, ExtraHeaders}
 %%
 %% @doc     Authenticate a request.
 %% @end
@@ -418,7 +418,7 @@ parse_auth_filter_realm([], _Realm, _Name, Res) ->
 %%            false                      |
 %%            {stale, User}              |
 %%            {authenticated, User}      |
-%%            {peer_authenticated, User} 
+%%            {peer_authenticated, User}
 %%
 %%            Header = #keylist{}
 %%            Method = string()
@@ -426,7 +426,7 @@ parse_auth_filter_realm([], _Realm, _Name, Res) ->
 %%            User = string() "SIP authentication username"
 %%
 %% @throws  {siperror, Status, Reason}               |
-%%            {siperror, Status, Reason, ExtraHeaders} 
+%%            {siperror, Status, Reason, ExtraHeaders}
 %%
 %% @doc     Authenticate through X-YXA-Peer-Auth or, if that does not
 %%          exist, through Proxy-Authentication.

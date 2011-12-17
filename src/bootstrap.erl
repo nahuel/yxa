@@ -49,7 +49,7 @@ start() ->
 
     io:format("* Creating tables on this Mnesia node (~p)~n", [node()]),
     init_db_module(?DB_MODULES, node()),
- 
+
     ok = my_wait_for_tables(?MNESIA_TABLES, 10000),
 
     io:format("* Updating any pre-existing table definitions~n"),
@@ -230,5 +230,5 @@ my_wait_for_tables2([H | T], Timeout, Count) ->
 	    io:format(" error ~p~n~n", [Reason]),
 	    error
     end.
-    
-    
+
+

@@ -56,7 +56,7 @@
 %% The ssl module does not support reuseaddr
 -define(SSL_SOCKETOPTS, [binary, {packet, 0}, {active, once}, {nodelay, true}]).
 
-%% LINUX_IPPROTO_IPv6 = 41 is located in 
+%% LINUX_IPPROTO_IPv6 = 41 is located in
 %% /usr/include/linux/in.h from linux-libc-dev
 %% /usr/include/netinet/in.h from libc6-dev
 -define(LINUX_IPPROTO_IPV6, 41).

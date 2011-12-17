@@ -109,7 +109,7 @@ write_location(A, Node) when is_atom(Node) ->
 		  _ ->
 		      throw({error, "Can't write location without address"})
 	      end,
-    
+
     Class = case ?GET_VAR("class") of
 		{ok, ClassV} when is_list(ClassV) ->
 		    case lists:member(ClassV, ?LOCATION_CLASSES) of
@@ -220,7 +220,7 @@ print_form(A, NodeStr) when is_list(NodeStr) ->
 	     ],
 
     Subject = {h3, [], ["New location :"]},
-    
+
     Form = {form, [{method, post},
 		   {action, "locationdb_add.yaws"}],
 	    [

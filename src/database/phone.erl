@@ -425,7 +425,7 @@ get_sipuser_location_binding(SipUser, Location) when is_list(SipUser), is_record
 
 %%--------------------------------------------------------------------
 %% @spec    (SipUser) ->
-%%            {ok, Entries} 
+%%            {ok, Entries}
 %%
 %%            SipUser = string()
 %%

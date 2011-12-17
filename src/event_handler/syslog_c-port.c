@@ -113,8 +113,8 @@ main()
     }
 
     syslog (prio, "%s", buf + 1);
-    
-    /* 'clear' buf in case we just happen to not really read another message 
+
+    /* 'clear' buf in case we just happen to not really read another message
      * (clear both the prio byte and the first data byte)
      */
     buf[0] = 0;

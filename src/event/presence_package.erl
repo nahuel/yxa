@@ -611,7 +611,7 @@ test() ->
 -else.
 
 test() ->
-    
+
     %% get_publish_etag_expires(Request, SIPuser, THandler)
     %%--------------------------------------------------------------------
     autotest:mark(?LINE, "get_publish_etag_expires/3 - 1"),

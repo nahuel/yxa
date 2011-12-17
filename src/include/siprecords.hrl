@@ -14,7 +14,7 @@
 	  sup_spec	= none,	%% none | {append, SupSpec}
 	  mnesia_tables	= []	%% list() of atom(), mnesia tables required online before starting
 	 }).
-	  
+
 %% XXX can we assume that fields with the same names have the same possible types ?
 
 %% @type     request() = #request{}.
@@ -33,22 +33,22 @@
 	  body    % binary()
 	 }).
 
-%% XXX there should be new / set functions to handle param_pairs in via (if we chose to use them)  
+%% XXX there should be new / set functions to handle param_pairs in via (if we chose to use them)
 -record(via, {
 	  proto,         % "SIP/2.0/PROTOCOL"
                          % the protocol used as a string() -
 	                 % a consistent use of atom() would be preferable
-	  host,          % string(), in lower case, usually a domain name (e.g. "su.se"), 
+	  host,          % string(), in lower case, usually a domain name (e.g. "su.se"),
 	                 % but may also be a IPv4 address (e.g. "123.10.23.45") or a
-	                 % IPv6 references (e.g. "[1:2:3:4:5:6:7:8]") 
+	                 % IPv6 references (e.g. "[1:2:3:4:5:6:7:8]")
 	  port,          % none | string() (a numeric string) | integer()
 	                 % destination port at host
-	  param          % list() of "name=val" | "name" strings, in lower case        
+	  param          % list() of "name=val" | "name" strings, in lower case
 	  %% XXX should this record also be equipped with a param_pairs field, as the sipurl record() ?
 	 }).
 
 %% stores a single SIP Request "Contact" header entry
-%% 
+%%
 -record(contact, {
 	  display_name,  % none | string()
 	  urlstr,        % "*" | string() (a raw sipurl without padding whitespaces)
@@ -57,29 +57,29 @@
 
 %%--------------------------------------------------------------------
 %% * see RFC 3261 chapter 19 for info on fields
-%% * use sipurl:new and set functions to create and modify 
+%% * use sipurl:new and set functions to create and modify
 %%   records - data may otherwise become inconsistent
-%% * Optional fields that may or may not be part of a sip-url are set 
+%% * Optional fields that may or may not be part of a sip-url are set
 %%   to 'none' if they are not found during url parsing or if they are
 %%   not to be included in a url that is to be sent.
 %%--------------------------------------------------------------------
 -record(sipurl, {
 	  proto,  % "sip" | "sips" | "tel" (not yet supported)
-                  % the protocol used  
+                  % the protocol used
 	          % XXX current sipurl.erl code only handles string() (must be lower case) -
 	  	  % "sip" or "sips", a consistent use of atom() would be preferable
-	  
+
 	  %% user info - must be case sensitive
 	  user,   % none | string(), numeric phone no. or user part of sip url
 	  pass,   % none | string(), a password
-	  
+
 	  %% host info - must be case insensitive
-	  host,   % string(), in lower case, usually a domain name (e.g. "su.se"), 
+	  host,   % string(), in lower case, usually a domain name (e.g. "su.se"),
 	          % but may also be a IPv4 address (e.g. "123.10.23.45") or a
-	          % IPv6 references (e.g. "[1:2:3:4:5:6:7:8]") 
+	          % IPv6 references (e.g. "[1:2:3:4:5:6:7:8]")
 	  port,   % none | integer()
 	          % destination port at host
-	          	  
+
 	  %% uri-parameters - must be case insensitive
 	  param_pairs    % url_param record()
 
@@ -89,10 +89,10 @@
 
 
 %%--------------------------------------------------------------------
-%% keylist.erl records 
+%% keylist.erl records
 %%--------------------------------------------------------------------
 
-%% a list wrapped in a record to allow better type checking and 
+%% a list wrapped in a record to allow better type checking and
 %% limiting direct access to it (use access functions supplied by
 %% module keylist)
 -record(keylist, {

@@ -23,8 +23,8 @@ img {border: 0px;}
 .navigation {height: 60px; vertical-align: top; font-family: Arial Narrow, Tahoma, Helvetica, sans-serif; font-size: 11 px; text-align: left; letter-spacing: 2px; color: #999999;}
 
 
-/* 
-All vanlig text skall omfattas av 'p'-taggar, <p>text</p> 
+/*
+All vanlig text skall omfattas av 'p'-taggar, <p>text</p>
 */
 p	{background: transparent; margin-top: 0px; margin-bottom: 8px;}
 
@@ -55,7 +55,7 @@ Sätts på alla buttons, t ex <input type="submit" value="Nästa" class="button">
 
 
 /*
-Sätts på alla select, t ex 	
+Sätts på alla select, t ex
 <select name="feedback" size="1" class="select">
 	<option>Alternativ 1</option>
 	<option>Alternativ 2</option>

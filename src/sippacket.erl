@@ -62,7 +62,7 @@
 %% @spec    (Packet, Origin) ->
 %%            Request   |
 %%            Response  |
-%%            keepalive 
+%%            keepalive
 %%
 %%            Packet = binary() | string()
 %%            Origin = #siporigin{} | none
@@ -73,7 +73,7 @@
 %%            Reason   = string() "SIP reason phrase"
 %%
 %% @throws  {siperror, Status, Reason}               |
-%%            {siperror, Status, Reason, ExtraHeaders} 
+%%            {siperror, Status, Reason, ExtraHeaders}
 %%
 %% @doc     Parse a packet received from the network into either a
 %%          request or a response record()
@@ -142,7 +142,7 @@ extract_body(_Bin, _BodyOffset, CL) ->
 
 %%--------------------------------------------------------------------
 %% @spec    (Packet, Origin) ->
-%%            {FirstLine, Header, BodyOffset} | keepalive 
+%%            {FirstLine, Header, BodyOffset} | keepalive
 %%
 %%            Packet = binary()
 %%            Origin = #siporigin{} | none
@@ -153,7 +153,7 @@ extract_body(_Bin, _BodyOffset, CL) ->
 %%            BodyOffset = integer()
 %%
 %% @throws  {siperror, Status, Reason}               |
-%%            {siperror, Status, Reason, ExtraHeaders} 
+%%            {siperror, Status, Reason, ExtraHeaders}
 %%
 %% @doc     Parse a request/response. Extract the first line contents,
 %%          build a Header keylist, and return the offset to the

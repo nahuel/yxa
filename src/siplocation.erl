@@ -851,7 +851,7 @@ get_locations_with_prio2(Priority, [#siplocationdb_e{flags = Flags} = H | T], Re
 
 %%--------------------------------------------------------------------
 %% @spec    (RegReq, Contacts) ->
-%%            void()                 
+%%            void()
 %%
 %%            RegReq   = #reg_request{}
 %%            Contacts = [#contact{}]
@@ -860,7 +860,7 @@ get_locations_with_prio2(Priority, [#siplocationdb_e{flags = Flags} = H | T], Re
 %%
 %% @throws  {siperror, Status, Reason}               |
 %%            {siperror, Status, Reason, ExtraHeaders} |
-%%            MnesiaError                              
+%%            MnesiaError
 %%
 %% @doc     process a SIP Contact entry (thats not a wildcard) and do
 %%          the appropriate db add/rm/update, see: RFC 3261 chapter
@@ -956,7 +956,7 @@ get_database_phone_instance_reg_id(_Instance, _RegId, [], Res) ->
 
 %%--------------------------------------------------------------------
 %% @spec    (RegReq, Contact, DBLocation) ->
-%%            void()                 
+%%            void()
 %%
 %%            RegReq      = #reg_request{}
 %%            Contact     = #contact{} "sipuser-location binding data in REGISTER request"
@@ -966,7 +966,7 @@ get_database_phone_instance_reg_id(_Instance, _RegId, [], Res) ->
 %%
 %% @throws  {siperror, Status, Reason}               |
 %%            {siperror, Status, Reason, ExtraHeaders} |
-%%            MnesiaError                              
+%%            MnesiaError
 %%
 %% @doc     Check if the REGISTER we are processing has the same
 %%          Call-Id as the currently stored location binding.
@@ -998,7 +998,7 @@ check_same_call_id(RegReq, Contact, DBLocation) ->
 
 %%--------------------------------------------------------------------
 %% @spec    (RegReq, Contact, DBLocation, Expire) ->
-%%            void()                 
+%%            void()
 %%
 %%            RegReq     = #reg_request{}
 %%            Contact    = #contact{} "sipuser-location binding data in REGISTER request"
@@ -1009,7 +1009,7 @@ check_same_call_id(RegReq, Contact, DBLocation) ->
 %%
 %% @throws  {siperror, Status, Reason}               |
 %%            {siperror, Status, Reason, ExtraHeaders} |
-%%            MnesiaError                              
+%%            MnesiaError
 %%
 %% @doc     Check if the REGISTER we are processing has the same
 %%          Call-Id as the currently stored location binding.
@@ -1291,7 +1291,7 @@ get_register_expire(Expire) ->
 %%            RequestHeader = #keylist{} ""
 %%            PhoneEntrys   = [#phone{}] ""
 %%
-%% @throws  SipError 
+%% @throws  SipError
 %%
 %% @doc     handles wildcard based removal (RFC 3261 chapter 10 page
 %%          64 - step 6), this function handles a list of Locations
