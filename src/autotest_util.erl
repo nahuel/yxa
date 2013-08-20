@@ -24,7 +24,7 @@
 
 	 add_valid_credentials/3,
 	 add_valid_credentials/4,
-	 
+
 	 get_sippipe_result/0,
 	 get_created_response/0,
 
@@ -298,7 +298,7 @@ assert_on_message() ->
 -ifdef( YXA_NO_UNITTEST ).
 test() ->
     {error, "Unit test code disabled at compile time"}.
-    
+
 -else.
 
 test() ->

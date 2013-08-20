@@ -88,7 +88,7 @@ init() ->
 %%            Dialog = #dialog{}
 %%            Pid    = pid() "dialog controller to be"
 %%
-%% @throws  {error, Reason} 
+%% @throws  {error, Reason}
 %%
 %% @doc     Register a dialog controller for a dialog record.
 %% @end
@@ -106,7 +106,7 @@ register_dialog_controller(Dialog, Pid) when is_record(Dialog, dialog), is_pid(P
 %%            Pid    = pid() "dialog controller to be"
 %%            Expire = integer() "expire time in seconds"
 %%
-%% @throws  {error, Reason} 
+%% @throws  {error, Reason}
 %%
 %% @doc     Register a dialog controller for a dialog record.
 %% @end
@@ -125,7 +125,7 @@ register_dialog_controller(Dialog, Pid, Expire) when is_record(Dialog, dialog), 
 %%            LocalTag = string()
 %%            Pid      = pid() "dialog controller to be"
 %%
-%% @throws  {error, Reason} 
+%% @throws  {error, Reason}
 %%
 %% @doc     Register 'half a dialog'. A half dialog is one where we do
 %%          not yet know the remote tag, like when we send out a
@@ -144,7 +144,7 @@ register_dialog_controller(CallId, LocalTag, Pid) when is_list(CallId), is_list(
 %%            Pid      = pid() "dialog controller to be"
 %%            Expire   = integer() "expire time in seconds"
 %%
-%% @throws  {error, Reason} 
+%% @throws  {error, Reason}
 %%
 %% @doc     Register 'half a dialog'. A half dialog is one where we do
 %%          not yet know the remote tag, like when we send out a
@@ -165,7 +165,7 @@ register_dialog_controller(CallId, LocalTag, Pid, Expire) when is_list(CallId), 
 %%            Pid       = pid() "dialog controller to be"
 %%            Expire    = integer() "expire time in seconds"
 %%
-%% @throws  {error, Reason} 
+%% @throws  {error, Reason}
 %%
 %% @doc     Register a dialog ('half dialog' if RemoteTag is
 %%          undefined).
@@ -183,7 +183,7 @@ register_dialog_controller(CallId, LocalTag, RemoteTag, Pid) when is_list(CallId
 %%            Pid       = pid() "dialog controller to be"
 %%            Expire    = integer() "expire time in seconds"
 %%
-%% @throws  {error, Reason} 
+%% @throws  {error, Reason}
 %%
 %% @doc     Register a dialog ('half dialog' if RemoteTag is
 %%          undefined).
@@ -550,7 +550,7 @@ create_dialog_state_uac(Request, Response) when is_record(Request, request), is_
 
 %%--------------------------------------------------------------------
 %% @spec    (Request, Response) ->
-%%            {ok, Dialog} 
+%%            {ok, Dialog}
 %%
 %%            Request  = #request{}
 %%            Response = #response{}
@@ -558,7 +558,7 @@ create_dialog_state_uac(Request, Response) when is_record(Request, request), is_
 %%            Dialog = #dialog{}
 %%            Reason = string()
 %%
-%% @throws  {error, Reason} 
+%% @throws  {error, Reason}
 %%
 %% @doc     Call this when a local UAS prepares to answer a request
 %%          and thereby establishes a dialog, if you want a dialog
@@ -674,7 +674,7 @@ create_dialog_state_uas(Request, ResponseToTag, ResponseContact)
 
 %%--------------------------------------------------------------------
 %% @spec    (Request, ResponseContact) ->
-%%            true | false 
+%%            true | false
 %%
 %%            Request         = #request{}
 %%            ResponseContact = [string()]
@@ -682,7 +682,7 @@ create_dialog_state_uas(Request, ResponseToTag, ResponseContact)
 %%            Reason = response_contact_must_be_secure |
 %%                     response_contact_missing
 %%
-%% @throws  {error, Reason} 
+%% @throws  {error, Reason}
 %%
 %% @doc     Figure out if the 'secure' flag should be set on a dialog,
 %%          and assert if the current request+contact combination

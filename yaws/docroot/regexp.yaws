@@ -103,7 +103,7 @@ get_regexps_info(Node, NodeStr) when is_atom(Node), is_list(NodeStr) ->
 	    RegexpRoutes when is_list(RegexpRoutes) ->
 		fmt_regexproutes(RegexpRoutes, NodeStr)
 	end,
-    {ok, 
+    {ok,
      [{tr, [], [
 		{th, [], "Regexp"},
 		{th, [], "Priority"},
@@ -140,7 +140,7 @@ fmt_regexproutes([H | T], NodeStr, Res) ->
 		   _ ->
 		       "&nbsp;"
 	       end,
-		       
+
     Actions = ["[", {a, [{href, "regexp_delete.yaws"
 			  "?node=" ++ yaws_api:url_encode(NodeStr) ++
 			  "&regexp=" ++ yaws_api:url_encode(Regexp) ++

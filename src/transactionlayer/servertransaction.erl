@@ -280,7 +280,7 @@ handle_call({get_branch}, From, State) ->
 %%--------------------------------------------------------------------
 %% @spec    ({set_report_to, Pid}, From, State) ->
 %%            {reply, Reply, State, Timeout::integer()} |
-%%            {stop, Reason, Reply, State}    
+%%            {stop, Reason, Reply, State}
 %%
 %%            Pid = pid()
 %%
@@ -329,7 +329,7 @@ handle_call({set_report_to, Pid}, From, #state{report_to=undefined}=State) when 
 %%--------------------------------------------------------------------
 %% @spec    (change_parent, FromPid, ToPid}, From, State) ->
 %%            {reply, Reply, State, Timeout::integer()} |
-%%            {stop, Reason, Reply, State}    
+%%            {stop, Reason, Reply, State}
 %%
 %%            FromPid = pid()
 %%            ToPid   = pid()
@@ -355,7 +355,7 @@ handle_call({change_parent, FromPid, ToPid}, From, #state{parent = FromPid} = St
 %%--------------------------------------------------------------------
 %% @spec    (get_my_to_tag, From, State) ->
 %%            {reply, Reply, State, Timeout::integer()} |
-%%            {stop, Reason, Reply, State}    
+%%            {stop, Reason, Reply, State}
 %%
 %%            Reply = {ok, ToTag}
 %%            ToTag = string()

@@ -160,7 +160,7 @@ fmt_daystime({D, {H, M, S}}) ->
 %% Returns : HTML = term(), Yaws html data
 %%--------------------------------------------------------------------
 transactionlayer(A, Node, Statistics) when is_list(Statistics) ->
-    {ShowHideLink, Transactions} = 
+    {ShowHideLink, Transactions} =
 	case ?GET_VAR("transaction") of
 	    {ok, "show"} ->
 		{toggle_link(A, "hide transactions", "transaction"),
@@ -174,7 +174,7 @@ transactionlayer(A, Node, Statistics) when is_list(Statistics) ->
 		{toggle_link(A, "show transactions", "transaction"),
 		 []}
 	end,
-    
+
     Stats = print_statistics([
 			      {{transactionlayer, transactions}, "Currently ongoing transactions"}
 			      ], Statistics),
@@ -186,7 +186,7 @@ transactionlayer(A, Node, Statistics) when is_list(Statistics) ->
 
      Stats,
      Transactions
-     
+
     ].
 
 
@@ -249,7 +249,7 @@ print_transactionlist(_Node, [], Res) ->
 %%           Wanted     = list() of {Id, Display}
 %%             Id       = term(), key used in yxa_statistics ETS table
 %%             Display  = string(), text to display for entry
-%%           Statistics = list() of {Key, Value} 
+%%           Statistics = list() of {Key, Value}
 %% Descrip.: Look for all entrys in Statistics that are listed in
 %%           Wanted. Format them nicely, preserving order in Wanted.
 %% Returns : HTML = term(), Yaws html data
@@ -269,7 +269,7 @@ print_statistics2([], _Statistics, Res) ->
 %% Function: get_stat(Id, Display, Statistics)
 %%           Id         = term(), key used in yxa_statistics ETS table
 %%           Display    = string(), text to display for entry
-%%           Statistics = list() of {Key, Value} 
+%%           Statistics = list() of {Key, Value}
 %% Descrip.: Look for a specific entry in Statistics with Key matching
 %%           Id. When found, format it for output using Display and
 %%           Value. If not found, return entry with "unknown" as
@@ -512,7 +512,7 @@ format_socketlist(SocketList) ->
 				     ]},
 			    Content
 			   ]}.
-    
+
 
 
 %%--------------------------------------------------------------------

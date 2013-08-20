@@ -438,7 +438,7 @@ start_fake_handler(ProcName) ->
 		    ),
 
     register(ProcName, Pid),
-    
+
     %% now, start monitoring exit signals
     receive
 	Any ->

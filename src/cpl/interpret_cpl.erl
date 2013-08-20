@@ -115,7 +115,7 @@
 %%            Graph     = term() "cpl script graph"
 %%            Direction = incoming | outgoing
 %%
-%% @throws  {error, atom()} 
+%% @throws  {error, atom()}
 %%
 %% @doc     This is just a simpler version of process_cpl_script/7,
 %%          which adopts the server transaction handler for Request,
@@ -176,7 +176,7 @@ process_cpl_script_res(Unmatched, _STHandler) ->
 %%--------------------------------------------------------------------
 %% @spec    (BranchBase, Request, User, Graph, Backend, STHandler,
 %%          Direction) ->
-%%            {ExitType, Param} | {ExitType, Param1, Param2} 
+%%            {ExitType, Param} | {ExitType, Param1, Param2}
 %%
 %%            BranchBase = string() "prefix to use when generating branches for client transactions"
 %%            Request    = #request{}
@@ -192,7 +192,7 @@ process_cpl_script_res(Unmatched, _STHandler) ->
 %%            Param2   = term()
 %%            Reason   = string() | atom()
 %%
-%% @throws  {error, Reason} 
+%% @throws  {error, Reason}
 %%
 %% @doc     execute the the cpl script and return a {Action, ....}
 %%          tuple to specify what to do with the request, the Action
@@ -470,7 +470,7 @@ signalling_performed(Graph, [Index | Visited]) ->
 %%            NodeIndex = [integer()] "node id created in xml_parse.erl"
 %%            NodeCode  = #node_code{}
 %%
-%% @throws  {error, index_not_found} 
+%% @throws  {error, index_not_found}
 %%
 %% @doc     find node with Index in Graph Note : Graph could be
 %%          implemented as a gb_tree (see gb_tree module) which will
@@ -1238,7 +1238,7 @@ test() ->
 
 test27() ->
     {error, "Unit test code disabled at compile time"}.
-    
+
 -else.
 
 test() ->

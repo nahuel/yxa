@@ -85,7 +85,7 @@ send_proxy_response(Socket, Response)
 %%--------------------------------------------------------------------
 %% @spec    (Socket, Request, Dst, ViaParameters) ->
 %%            {error, Reason}             |
-%%            {ok, SipSocket, UsedBranch} 
+%%            {ok, SipSocket, UsedBranch}
 %%
 %%            Socket        = #sipsocket{} | none "socket to use for sending this request"
 %%            Request       = #request{}

@@ -171,7 +171,7 @@ is_loose_router(Route) when is_record(Route, sipurl) ->
 
 %%--------------------------------------------------------------------
 %% @spec    (Request) ->
-%%            {ok, Dst, NewRequest} 
+%%            {ok, Dst, NewRequest}
 %%
 %%            Request = #request{}
 %%
@@ -179,7 +179,7 @@ is_loose_router(Route) when is_record(Route, sipurl) ->
 %%            NewRequest = #request{}
 %%
 %% @throws  {siperror, Status, Reason}               |
-%%            {siperror, Status, Reason, ExtraHeaders} 
+%%            {siperror, Status, Reason, ExtraHeaders}
 %%
 %% @doc     Inspect a request that some YXA application has found it
 %%          should proxy statelessly. Figure out a single sipdst
@@ -251,7 +251,7 @@ stateless_route_proxy_request2(Request, ApproxMsgSize) ->
 %%            Request = #request{}
 %%
 %% @throws  {siperror, Status, Reason}               |
-%%            {siperror, Status, Reason, ExtraHeaders} 
+%%            {siperror, Status, Reason, ExtraHeaders}
 %%
 %% @doc     Prepares a request for proxying. Checks Max-Forwards, etc.
 %%          Not guaranteed to return, might throw a siperror if the
@@ -295,14 +295,14 @@ get_approximate_msgsize(Request) when is_record(Request, request) ->
 
 %%--------------------------------------------------------------------
 %% @spec    (Header) ->
-%%            NewHeader 
+%%            NewHeader
 %%
 %%            Header = #keylist{}
 %%
 %%            NewHeader = #keylist{}
 %%
 %% @throws  {siperror, Status, Reason}               |
-%%            {siperror, Status, Reason, ExtraHeaders} 
+%%            {siperror, Status, Reason, ExtraHeaders}
 %%
 %% @doc     Check Max-Forwards in Header to make sure it is not less
 %%          than one when we have subtracted one (1) from it. Return
@@ -1913,7 +1913,7 @@ test() ->
     [{from,"From",["<sip:test@example.org"]},
      {route,"Route", ["<sip:one.example.org>", "<sip:two.example.org>"]}
     ] = keylist:test_to_list(SR_Header1),
-    
+
 
     autotest:mark(?LINE, "set_route/2 - 2.0"),
     %% test deletion of Route header
@@ -1923,7 +1923,7 @@ test() ->
     %% check result
     [{from,"From",["<sip:test@example.org"]}
     ] = keylist:test_to_list(SR_Header2),
-    
+
     autotest:mark(?LINE, "set_route/2 - 3.0"),
     %% test modification of Route header
     SR_Header3 = set_route(contact:parse(["<sip:three.example.org>"]),
@@ -1934,7 +1934,7 @@ test() ->
     [{from,"From",["<sip:test@example.org"]},
      {route,"Route", ["<sip:three.example.org>"]}
     ] = keylist:test_to_list(SR_Header3),
-    
+
     ok.
 
 -endif.

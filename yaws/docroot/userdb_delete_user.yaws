@@ -80,7 +80,7 @@ needs_confirmation(User, NodeStr) when is_list(User), is_list(NodeStr) ->
 						    {"node", NodeStr},
 						    {"user", User}
 						   ]),
-		       
+
 		       {input, [{type, submit},
 				{name, "confirm_userdb_delete_user"},
 				{value, "Confirm"}

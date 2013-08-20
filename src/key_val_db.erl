@@ -100,7 +100,7 @@ to_key_val(DB) ->
 %%            DB  = key_val_db()
 %%            Key = term()
 %%
-%% @throws  {error, duplicate_key} 
+%% @throws  {error, duplicate_key}
 %%
 %% @equiv   add(DB, Key, none)
 %% @end
@@ -115,7 +115,7 @@ add(DB, Key) ->
 %%            Key   = term()
 %%            Value = term()
 %%
-%% @throws  {error, duplicate_key} 
+%% @throws  {error, duplicate_key}
 %%
 %% @doc     Add new entry to DB.
 %% @end

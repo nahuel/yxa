@@ -266,7 +266,7 @@ get_var(A, Name) when is_list(Name) ->
 
 %%--------------------------------------------------------------------
 %% @spec    (A, Name) ->
-%%            {ok, Int} 
+%%            {ok, Int}
 %%
 %%            A    = term() "Yaws request data"
 %%            Name = string() "URL or POST data variable name"
@@ -274,7 +274,7 @@ get_var(A, Name) when is_list(Name) ->
 %%            Int    = integer()
 %%            Reason = string()
 %%
-%% @throws  {error, Reason} 
+%% @throws  {error, Reason}
 %%
 %% @doc     Like get_var/2 but converts the result to an integer.
 %% @end
@@ -317,14 +317,14 @@ error(Msg) when is_list(Msg) ->
 
 %%--------------------------------------------------------------------
 %% @spec    (User, Node) ->
-%%            true | false 
+%%            true | false
 %%
 %%            User = string() "username"
 %%            Node = atom() "node we are to talk with"
 %%
 %%            Reason = string()
 %%
-%% @throws  {error, Reason} 
+%% @throws  {error, Reason}
 %%
 %% @doc     Check if user User exists in the Mnesia userdb.
 %% @end

@@ -384,7 +384,7 @@ handle_cast(Unknown, State) ->
 
 %%--------------------------------------------------------------------
 %% @spec    (timeout, State) ->
-%%            {reply, Reply, NewState, Timeout::integer()} 
+%%            {reply, Reply, NewState, Timeout::integer()}
 %%
 %%            Reply  = ok | {error, Reason}
 %%            Reason = string()

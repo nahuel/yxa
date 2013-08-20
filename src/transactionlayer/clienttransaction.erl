@@ -3029,11 +3029,11 @@ test() ->
 				    },
     CancelRequest2_State1 = add_timer(10000, "testing timer", {resendrequest}, CancelRequest2_State1_1),
     CancelRequest2_EH1 = [{"Reason", ["TESTING"]}],
-    
+
     autotest:mark(?LINE, "cancel_request/2 - 1.1"),
     %% test extra headers in state 'calling' - no CANCEL is starter here
     CancelRequest2_State1_out = cancel_request(CancelRequest2_State1, CancelRequest2_EH1),
-					       
+
     autotest:mark(?LINE, "cancel_request/2 - 1.2"),
     %% verify new state
     siptimer:cancel_all_timers(CancelRequest_State1_out#state.timerlist),
@@ -3050,13 +3050,13 @@ test() ->
 							   },
     CancelRequest2_State2 = add_timer(10000, "testing timer", {resendrequest}, CancelRequest2_State2_1),
     CancelRequest2_EH2 = [{"Reason", ["TESTING 2"]}],
-    
+
     autotest:mark(?LINE, "cancel_request/2 - 2.1"),
     %% test extra headers in state 'proceeding' - should start a new CANCEL (when not testing)
     {ok, testing, CancelRequest2_State2_out,
      {CancelRequest2_CancelRequest, test_dst, _, 32 * 500, none}} =
 	cancel_request(CancelRequest2_State2, CancelRequest2_EH2),
-					       
+
     autotest:mark(?LINE, "cancel_request/2 - 2.2"),
     %% verify new state
     siptimer:cancel_all_timers(CancelRequest_State1_out#state.timerlist),

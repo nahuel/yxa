@@ -449,7 +449,7 @@ sub_second(Duration) when is_record(Duration, duration) ->
 -ifdef( YXA_NO_UNITTEST ).
 test() ->
     {error, "Unit test code disabled at compile time"}.
-    
+
 -else.
 
 test() ->

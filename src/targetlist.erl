@@ -139,14 +139,14 @@ get_length(TargetList) when is_record(TargetList, targetlist) ->
 
 %%--------------------------------------------------------------------
 %% @spec    (Target, TargetList) ->
-%%            NewTargetList 
+%%            NewTargetList
 %%
 %%            Target     = #target{}
 %%            TargetList = #targetlist{}
 %%
 %%            NewTargetList = [#target{}]
 %%
-%% @throws  {error, update_of_non_existin_target} 
+%% @throws  {error, update_of_non_existin_target}
 %%
 %% @doc     Locate the old instance of the target Target in the
 %%          TargetList and exchange it with Target.

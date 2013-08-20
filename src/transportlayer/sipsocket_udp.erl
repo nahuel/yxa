@@ -75,7 +75,7 @@
 %% v6 sockets have a default receive buffer size of 1k in Erlang R9C-0
 -define(SOCKETOPTSv6, [{reuseaddr, true}, binary, inet6, {buffer, 8 * 1024}]).
 
-%% LINUX_IPPROTO_IPv6 = 41 is located in 
+%% LINUX_IPPROTO_IPv6 = 41 is located in
 %% /usr/include/linux/in.h from linux-libc-dev
 %% /usr/include/netinet/in.h from libc6-dev
 -define(LINUX_IPPROTO_IPV6, 41).

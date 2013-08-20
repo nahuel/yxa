@@ -2,8 +2,8 @@
 %% -------------------------------------------------------------------
 
 -record(call, {
-	  callid, 
-	  type, 
-	  headers, 
+	  callid,
+	  type,
+	  headers,
 	  data
 	 }).

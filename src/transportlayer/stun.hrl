@@ -12,11 +12,11 @@
 	  proto,		%% udp | udp6 | ...
 	  local_ip,		%% tuple(), local IP address for socket we received STUN packet on
 	  local_port,		%% tuple(), local port number for socket we received STUN packet on
-	  
+
 	  remote_ip,		%% tuple(), source IP of STUN packet
 	  remote_ip_str,	%% string(), source IP of STUN packet
 	  remote_port,		%% integer(), source port of STUN packet
-	  
+
 	  alt_ip,		%% undefined | tuple(), alternate IP address available for responding
 	  alt_port,		%% undefined | tuple(), alternate port number available for responding
 
@@ -31,4 +31,4 @@
 	  change = none,	%% none | ip | port | both
 	  response		%% io_list() ([STUN_Header, STUN_Attributes], two binaries)
 	 }).
-	
+

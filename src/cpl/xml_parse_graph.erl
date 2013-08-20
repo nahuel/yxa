@@ -255,11 +255,11 @@ add_single_dest(Graph, CurrentNode, NextId) ->
 
 %%--------------------------------------------------------------------
 %% @spec    (Graph, Source, Dest) ->
-%%            ok 
+%%            ok
 %%
 %%            Reason = atom()
 %%
-%% @throws  {error, Reason} 
+%% @throws  {error, Reason}
 %%
 %% @doc     call digraph:add_edge/3, throw a error if cycles are
 %%          detected
@@ -275,12 +275,12 @@ add_edge(Graph, Source, Dest) ->
 
 %%--------------------------------------------------------------------
 %% @spec    (Graph, CurrentNodeId, TagType, Statements) ->
-%%            DiGraph 
+%%            DiGraph
 %%
 %%            DiGraph = term()
 %%            Reason  = atom()
 %%
-%% @throws  {error, Reason} 
+%% @throws  {error, Reason}
 %%
 %% @doc     add a new node or replace a dummy node previously created
 %% @end

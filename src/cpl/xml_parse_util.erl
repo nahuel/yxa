@@ -51,14 +51,14 @@
 
 %%--------------------------------------------------------------------
 %% @spec    (DateString) ->
-%%            {Year, Month, Day} 
+%%            {Year, Month, Day}
 %%
 %%            Year   = integer()
 %%            Month  = integer()
 %%            Day    = integer()
 %%            Reason = atom()
 %%
-%% @throws  {error, Reason} 
+%% @throws  {error, Reason}
 %%
 %% @doc     parse a CPL DATE string
 %% @end
@@ -111,11 +111,11 @@ date(_) ->
 
 %%--------------------------------------------------------------------
 %% @spec    (DateTimeString) ->
-%%            #date_time{} 
+%%            #date_time{}
 %%
 %%            Reason = atom()
 %%
-%% @throws  {error, Reason} 
+%% @throws  {error, Reason}
 %%
 %% @doc     parse a CPL DATE-TIME string
 %% @end
@@ -164,13 +164,13 @@ time2([Y1,Y2,Y3,Y4,M1,M2,D1,D2,_,H1,H2,Min1,Min2,S1,S2 | _], Type) ->
 
 %%--------------------------------------------------------------------
 %% @spec    (UntilStr) ->
-%%            {Year, Month, Date} | #date_time{} 
+%%            {Year, Month, Date} | #date_time{}
 %%
 %%            UntilStr = string() "the value of a until attribute in a time tag in a time-switch"
 %%
 %%            Reason = string()
 %%
-%% @throws  {error, Reason} 
+%% @throws  {error, Reason}
 %%
 %% @doc     "The "until" parameter defines an iCalendar COS DATE or
 %%          DATE-TIME [COS DATE or COS DATE-TIME] value which bounds
@@ -399,7 +399,7 @@ iolist_to_str(IOList) when is_list(IOList) ->
 %%            L2  = integer()
 %%            InL = [integer()] "exactly two integers"
 %%
-%% @throws  {error, value_out_of_range} 
+%% @throws  {error, value_out_of_range}
 %%
 %% @doc     check if Val is part of range LN, either one or two ranges
 %%          are checked
@@ -422,7 +422,7 @@ check_range(Val, L) when is_list(L) ->
 %%            Value       = term()
 %%            LegalValues = term()
 %%
-%% @throws  {error, attribute_value_is_not_legal} 
+%% @throws  {error, attribute_value_is_not_legal}
 %%
 %% @doc     throw a exception if Value isn't part of LegalValues
 %% @end
@@ -437,13 +437,13 @@ legal_value(Value, LegalValues) ->
 
 %%--------------------------------------------------------------------
 %% @spec    (Status) ->
-%%            integer() 
+%%            integer()
 %%
 %%            Status = string() "the value of the status attribute in a reject tag"
 %%
 %%            Reason = atom()
 %%
-%% @throws  {error, Reason} 
+%% @throws  {error, Reason}
 %%
 %% @doc     return the numerical error code of Status. Throws an error
 %%          if numerical error code out of range or unkown symbolic
@@ -505,13 +505,13 @@ normalize_prio(PrioStr) ->
 %% language-range  = language-tag / "*"
 %%--------------------------------------------------------------------
 %% @spec    (Str) ->
-%%            string() 
+%%            string()
 %%
 %%            Str = string()
 %%
 %%            Reason = integer()
 %%
-%% @throws  {error, Reason} 
+%% @throws  {error, Reason}
 %%
 %% @doc     determine if Str is a language-range (or language-tag)
 %% @end
@@ -524,13 +524,13 @@ is_language_range(Str) ->
 
 %%--------------------------------------------------------------------
 %% @spec    (Str) ->
-%%            string() 
+%%            string()
 %%
 %%            Str = string()
 %%
 %%            Reason = integer()
 %%
-%% @throws  {error, Reason} 
+%% @throws  {error, Reason}
 %%
 %% @doc     determine if Str is a language-range (or language-tag)
 %% @end
@@ -588,7 +588,7 @@ visualize(G) ->
 -ifdef( YXA_NO_UNITTEST ).
 test() ->
     {error, "Unit test code disabled at compile time"}.
-    
+
 -else.
 
 test() ->

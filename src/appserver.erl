@@ -221,7 +221,7 @@ terminate(Mode) when is_atom(Mode) ->
 %%            DoCPL   = true | false "do CPL or not"
 %%
 %% @throws  {siperror, Status, Reason}               |
-%%            {siperror, Status, Reason, ExtraHeaders} 
+%%            {siperror, Status, Reason, ExtraHeaders}
 %%
 %% @doc     Request was not meant for this proxy itself - find out if
 %%          this request is for one of our users, and if so find out
@@ -247,7 +247,7 @@ create_session(Request, YxaCtx, DoCPL) when is_record(Request, request), is_reco
 %%            Surplus = [#sipproxy_action{}] "surplus actions for user agents with multiple active bindings (draft-Outbound)"
 %%
 %% @throws  {siperror, Status, Reason}               |
-%%            {siperror, Status, Reason, ExtraHeaders} 
+%%            {siperror, Status, Reason, ExtraHeaders}
 %%
 %% @doc     The request was turned into a set of Actions (derived from
 %%          it's URI matching a set of Users). Note : When we start
@@ -288,7 +288,7 @@ create_session_actions(Request, Users, Actions, Surplus) when is_record(Request,
 %%            YxaCtx  = #yxa_ctx{}
 %%
 %% @throws  {siperror, Status, Reason}               |
-%%            {siperror, Status, Reason, ExtraHeaders} 
+%%            {siperror, Status, Reason, ExtraHeaders}
 %%
 %% @doc     No actions found for this request. Check if we should
 %%          forward it anyways, or respond '404 Not Found'.
@@ -324,7 +324,7 @@ create_session_nomatch(Request, YxaCtx) when is_record(Request, request), is_rec
 %%            Graph   = term() "CPL graph"
 %%
 %% @throws  {siperror, Status, Reason}               |
-%%            {siperror, Status, Reason, ExtraHeaders} 
+%%            {siperror, Status, Reason, ExtraHeaders}
 %%
 %% @doc     We found a CPL script that should be applied to this
 %%          request (or perhaps have this request applied to it). Do

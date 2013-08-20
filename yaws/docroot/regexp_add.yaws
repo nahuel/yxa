@@ -101,7 +101,7 @@ write_regexp(A, Node) when is_atom(Node) ->
 		  _ ->
 		      throw({error, "Can't write regexproute without address"})
 	      end,
-    
+
     Prio = case yxa_yaws_util:get_var_int(A, "priority") of
 	       {ok, PriorityInt} ->
 		   {priority, PriorityInt};
@@ -190,7 +190,7 @@ print_form(A, Node, NodeStr) when is_atom(Node), is_list(NodeStr) ->
 	     ],
 
     Subject = {h3, [], ["New regexp-route :"]},
-    
+
     Form = {form, [{method, post},
 		   {action, "regexp_add.yaws"}],
 	    [

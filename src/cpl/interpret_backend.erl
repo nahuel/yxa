@@ -1,7 +1,7 @@
 %%%-------------------------------------------------------------------
 %%% File    : interpret_backend.erl
 %%% @author   Håkan Stenholm <hsten@it.su.se>
-%%% @doc     
+%%% @doc
 %%%
 %%% @since    03 Dec 2004 by Håkan Stenholm <hsten@it.su.se>
 %%% @end
@@ -484,7 +484,7 @@ prefix_match2(_, _) ->
 %% gen-value        =  token / host / quoted-string
 %%--------------------------------------------------------------------
 %% @spec    (Str) ->
-%%            {QVal, Language} 
+%%            {QVal, Language}
 %%
 %%            Str = string() "a single language entry from a Accept-Language header"
 %%
@@ -492,7 +492,7 @@ prefix_match2(_, _) ->
 %%            Asterisk = [42] "silly because of edoc limitation"
 %%            QVal     = float() "in range = 0-1"
 %%
-%% @throws  {error, malformed_accept_language_element} 
+%% @throws  {error, malformed_accept_language_element}
 %%
 %% @doc     Parse a language entry with possible q-value. Throws an
 %%          error if Str is a malformed member of a Accept-Language
@@ -954,7 +954,7 @@ get_address_switch_uri(Request, Field) when is_record(Request, request) ->
 -ifdef( YXA_NO_UNITTEST ).
 test() ->
     {error, "Unit test code disabled at compile time"}.
-    
+
 -else.
 
 test() ->

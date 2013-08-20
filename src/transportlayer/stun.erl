@@ -270,7 +270,7 @@ received_stun_request(SReq, Packet) ->
 %%            StunResult = #stun_result{}
 %%            Line       = integer() "source code line where the 'not implemented' situation occured"
 %%
-%% @throws  stun_error() 
+%% @throws  stun_error()
 %%
 %% @doc     Do some initial sanity checks of the received packet to
 %%          see if it could be wellformed STUN. Check the size of the
@@ -317,7 +317,7 @@ safe_received_stun_request(#stun_request{length = Len} = SReq, Packet) ->
 %%            StunResult = #stun_result{}
 %%            Line       = integer() "source code line where the 'not implemented' situation occured"
 %%
-%% @throws  stun_error() 
+%% @throws  stun_error()
 %%
 %% @doc     If there was an MESSAGE-INTEGRITY attribute in the Packet,
 %%          we go along verifying the integrity of the STUN request.
@@ -379,7 +379,7 @@ stun_request_check_integrity(#stun_request{rfc = rfc3489} = SReq, _Packet, _MI_O
 %%            StunResult = #stun_result{}
 %%            Line       = integer() "source code line where the 'not implemented' situation occured"
 %%
-%% @throws  stun_error() 
+%% @throws  stun_error()
 %%
 %% @doc     Check that there are no mandatory attributes (type less
 %%          than 0x7ffff) that we don't recognize in the request we
@@ -418,7 +418,7 @@ stun_request_check_mandatory_attributes(SReq) ->
 %%            StunResult = #stun_result{}
 %%            Line       = integer() "source code line where the 'not implemented' situation occured"
 %%
-%% @throws  stun_error() 
+%% @throws  stun_error()
 %%
 %% @doc     We have now performed all checks on the received STUN
 %%          request - integrity check has passed and we have checked
@@ -465,7 +465,7 @@ stun_request(SReq) when is_record(SReq, stun_request) ->
 %%--------------------------------------------------------------------
 %% @spec    (Packet, SReq, MI_Offset, MsgIntegrity, Realm, Nonce,
 %%          Username) ->
-%%            {error, {not_implemented, Line}} 
+%%            {error, {not_implemented, Line}}
 %%
 %%            Packet       = binary() "STUN request"
 %%            SReq         = #stun_request{}
@@ -478,7 +478,7 @@ stun_request(SReq) when is_record(SReq, stun_request) ->
 %%
 %%            Line = integer() "source code line where the 'not implemented' situation occured"
 %%
-%% @throws  stun_error() 
+%% @throws  stun_error()
 %%
 %% @doc     Process the list of parsed attributes in SReq, and put
 %%          together attributes for the response where those vary
@@ -543,14 +543,14 @@ check_message_integrity(Packet, SReq, MI_Offset, MsgIntegrity, [Realm], [Nonce],
 
 %%--------------------------------------------------------------------
 %% @spec    (SReq) ->
-%%            {Change, ReplyAttrs} 
+%%            {Change, ReplyAttrs}
 %%
 %%            SReq = #stun_request{}
 %%
 %%            Change     = none | ip | port | both | error
 %%            ReplyAttrs = [#stun_attr{}]
 %%
-%% @throws  stun_error() 
+%% @throws  stun_error()
 %%
 %% @doc     Process the list of parsed attributes in SReq, and put
 %%          together attributes for the response where those vary
@@ -1279,7 +1279,7 @@ ip_tuple_to_bin({A1,A2,A3,A4,A5,A6,A7,A8}) ->
 %%
 %%            Code = stun_error_code()
 %%
-%% @throws  stun_error() 
+%% @throws  stun_error()
 %%
 %% @equiv    stun_error(Code, [])
 %% @end
@@ -1295,7 +1295,7 @@ stun_error({N, Reason}) when is_integer(N), is_list(Reason) ->
 %%            Code  = stun_error_code()
 %%            Attrs = stun_error_attrs()
 %%
-%% @throws  stun_error() 
+%% @throws  stun_error()
 %%
 %% @doc     Throw a signal that when caught by the upper level error
 %%          handling functions will be turned into a STUN ERROR-CODE
